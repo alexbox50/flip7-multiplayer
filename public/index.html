@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip 7 - Multiplayer Card Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Connection Screen -->
+        <div id="connection-screen" class="screen">
+            <div class="container">
+                <h1>Flip 7 Multiplayer</h1>
+                <div class="connection-form">
+                    <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+                    <input type="number" id="player-number" placeholder="Player number (1-18, optional)" min="1" max="18">
+                    <button id="join-btn">Join Game</button>
+                    <button id="reconnect-btn">Reconnect</button>
+                </div>
+                <div id="connection-status"></div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden">
+            <div class="game-header">
+                <div class="game-info">
+                    <h2>Flip 7</h2>
+                    <div id="player-info">
+                        Player <span id="current-player-number"></span>: 
+                        <span id="current-player-name"></span>
+                    </div>
+                </div>
+                <div class="game-controls">
+                    <button id="start-game-btn">Start Game</button>
+                    <button id="leave-game-btn">Leave Game</button>
+                </div>
+            </div>
+
+            <div class="game-area">
+                <!-- Players List -->
+                <div class="players-panel">
+                    <h3>Players</h3>
+                    <div id="players-list"></div>
+                    <div class="game-status">
+                        <div id="current-turn"></div>
+                        <div id="game-message"></div>
+                    </div>
+                </div>
+
+                <!-- Game Board -->
+                <div class="game-board">
+                    <div class="discard-pile">
+                        <h4>Top Card</h4>
+                        <div id="top-card" class="card"></div>
+                        <div id="direction-indicator">↻</div>
+                    </div>
+
+                    <!-- Player's Hand -->
+                    <div class="player-hand">
+                        <h4>Your Cards</h4>
+                        <div id="hand-cards" class="cards-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="admin-panel" class="admin-panel">
+                <h3>Admin Controls</h3>
+                <input type="password" id="admin-password" placeholder="Admin password">
+                <div class="admin-buttons">
+                    <button id="restart-game-btn">Restart Game</button>
+                    <input type="number" id="drop-player-number" placeholder="Player #" min="1" max="18">
+                    <button id="drop-player-btn">Drop Player</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
