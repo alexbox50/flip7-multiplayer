@@ -26,10 +26,16 @@ class Flip7Game {
         this.currentPlayerName = document.getElementById('current-player-name');
         this.playersList = document.getElementById('players-list');
         this.startGameBtn = document.getElementById('start-game-btn');
+        this.startRoundBtn = document.getElementById('start-round-btn');
         this.leaveGameBtn = document.getElementById('leave-game-btn');
-        this.topCard = document.getElementById('top-card');
-        this.directionIndicator = document.getElementById('direction-indicator');
+        this.deckCount = document.getElementById('deck-count');
+        this.currentRound = document.getElementById('current-round');
+        this.cardsLeft = document.getElementById('cards-left');
+        this.drawBtn = document.getElementById('draw-btn');
+        this.stickBtn = document.getElementById('stick-btn');
         this.handCards = document.getElementById('hand-cards');
+        this.uniqueCount = document.getElementById('unique-count');
+        this.totalValue = document.getElementById('total-value');
         this.currentTurn = document.getElementById('current-turn');
         this.gameMessage = document.getElementById('game-message');
 
@@ -44,7 +50,10 @@ class Flip7Game {
         this.joinBtn.addEventListener('click', () => this.joinGame());
         this.reconnectBtn.addEventListener('click', () => this.reconnectPlayer());
         this.startGameBtn.addEventListener('click', () => this.startGame());
+        this.startRoundBtn.addEventListener('click', () => this.startNextRound());
         this.leaveGameBtn.addEventListener('click', () => this.leaveGame());
+        this.drawBtn.addEventListener('click', () => this.drawCard());
+        this.stickBtn.addEventListener('click', () => this.stick());
         
         // Admin controls
         this.restartGameBtn.addEventListener('click', () => this.restartGame());
@@ -102,17 +111,46 @@ class Flip7Game {
             this.startGameBtn.style.display = 'none';
         });
 
+        this.socket.on('round-started', (data) => {
+            this.showMessage(`Round ${data.roundNumber} started! Draw your first card.`, 'info');
+            this.startRoundBtn.style.display = 'none';
+            this.currentRound.textContent = data.roundNumber;
+            this.cardsLeft.textContent = data.deckSize;
+        });
+
         this.socket.on('game-restarted', () => {
             this.showMessage('Game restarted by admin', 'info');
             this.startGameBtn.style.display = 'inline-block';
+            this.startRoundBtn.style.display = 'none';
         });
 
-        this.socket.on('card-played', (data) => {
-            this.showMessage(`${data.playerName} played ${this.formatCard(data.card)}`, 'info');
+        this.socket.on('card-drawn', (data) => {
+            if (data.playerNumber === this.playerNumber) {
+                this.showMessage(`You drew: ${data.card.value}`, 'info');
+            } else {
+                this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
+            }
         });
 
-        this.socket.on('game-won', (data) => {
-            this.showMessage(`🎉 ${data.winner} wins the game! 🎉`, 'success');
+        this.socket.on('player-stuck', (data) => {
+            this.showMessage(`${data.playerName} stuck with ${data.handValue} points`, 'info');
+        });
+
+        this.socket.on('player-bust', (data) => {
+            this.showMessage(`${data.playerName} went BUST! Drew duplicate value ${data.drawnCard.value}`, 'error');
+        });
+
+        this.socket.on('flip-seven', (data) => {
+            this.showMessage(`🎉 ${data.playerName} hit FLIP 7! ${data.handValue} + 15 bonus = ${data.totalPoints} points!`, 'success');
+        });
+
+        this.socket.on('round-ended', (data) => {
+            let message = `Round ${data.roundNumber - 1} Results:\n`;
+            data.results.forEach(result => {
+                message += `${result.playerName}: ${result.roundPoints} points (${result.status})\n`;
+            });
+            this.showMessage(message, 'info');
+            this.startRoundBtn.style.display = 'inline-block';
         });
 
         this.socket.on('player-disconnected', (data) => {
@@ -168,6 +206,18 @@ class Flip7Game {
         this.socket.emit('start-game');
     }
 
+    startNextRound() {
+        this.socket.emit('start-next-round');
+    }
+
+    drawCard() {
+        this.socket.emit('player-action', { action: 'draw' });
+    }
+
+    stick() {
+        this.socket.emit('player-action', { action: 'stick' });
+    }
+
     leaveGame() {
         this.socket.disconnect();
         this.showConnectionScreen();
@@ -212,23 +262,16 @@ class Flip7Game {
         this.dropPlayerNumber.value = '';
     }
 
-    playCard(cardIndex) {
-        if (!this.isMyTurn) {
-            this.showMessage('Not your turn!', 'error');
-            return;
-        }
-
-        this.socket.emit('play-card', { cardIndex });
-    }
+    // Removed playCard function - no longer needed for Flip 7
 
     updateGameDisplay() {
         if (!this.gameState) return;
 
         this.updatePlayersList();
-        this.updateTopCard();
+        this.updateDeckInfo();
         this.updatePlayerHand();
         this.updateTurnIndicator();
-        this.updateDirection();
+        this.updateActionButtons();
     }
 
     updatePlayersList() {
@@ -249,22 +292,26 @@ class Flip7Game {
                 playerItem.classList.add('disconnected');
             }
 
+            const statusClass = `status-${player.status || 'waiting'}`;
+            
             playerItem.innerHTML = `
                 <span class="player-number">${playerNumber}</span>
                 <span class="player-name">${player.name}</span>
                 <span class="card-count">${player.cards.length}</span>
+                <span class="player-points">${player.points || 0}pts</span>
+                <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
             `;
 
             this.playersList.appendChild(playerItem);
         });
     }
 
-    updateTopCard() {
-        if (this.gameState.discardPile && this.gameState.discardPile.length > 0) {
-            const card = this.gameState.discardPile[this.gameState.discardPile.length - 1];
-            this.topCard.innerHTML = this.renderCard(card);
-        } else {
-            this.topCard.innerHTML = '<div class="card">No cards</div>';
+    updateDeckInfo() {
+        if (this.gameState.deck) {
+            this.cardsLeft.textContent = this.gameState.deck.length;
+            if (this.gameState.roundNumber) {
+                this.currentRound.textContent = this.gameState.roundNumber;
+            }
         }
     }
 
@@ -276,19 +323,17 @@ class Flip7Game {
         const playerCards = this.gameState.players[this.playerNumber].cards;
         const topCard = this.gameState.discardPile[this.gameState.discardPile.length - 1];
         
+        // Calculate unique values and total
+        const uniqueValues = new Set(playerCards.map(card => card.value));
+        const totalValue = playerCards.reduce((sum, card) => sum + card.value, 0);
+        
+        this.uniqueCount.textContent = uniqueValues.size;
+        this.totalValue.textContent = totalValue;
+
         playerCards.forEach((card, index) => {
             const cardElement = document.createElement('div');
             cardElement.innerHTML = this.renderCard(card);
-            
-            const cardDiv = cardElement.firstChild;
-            
-            // Check if card is playable
-            if (this.isCardPlayable(card, topCard)) {
-                cardDiv.classList.add('playable');
-            }
-            
-            cardDiv.addEventListener('click', () => this.playCard(index));
-            this.handCards.appendChild(cardDiv);
+            this.handCards.appendChild(cardElement.firstChild);
         });
     }
 
@@ -313,50 +358,31 @@ class Flip7Game {
         }
     }
 
-    updateDirection() {
-        if (this.gameState.direction === 1) {
-            this.directionIndicator.textContent = '↻';
-            this.directionIndicator.classList.remove('direction-reverse');
-        } else {
-            this.directionIndicator.textContent = '↺';
-            this.directionIndicator.classList.add('direction-reverse');
+    updateActionButtons() {
+        const player = this.gameState.players[this.playerNumber];
+        const isMyTurn = this.gameState.currentPlayer === this.playerNumber;
+        const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress;
+        
+        this.drawBtn.disabled = !canAct;
+        this.stickBtn.disabled = !canAct || !player.hasDrawnFirstCard;
+        
+        if (isMyTurn && canAct) {
+            if (!player.hasDrawnFirstCard) {
+                this.drawBtn.textContent = 'Draw First Card';
+                this.stickBtn.textContent = 'Stick (Must draw first)';
+            } else {
+                this.drawBtn.textContent = 'Twist (Draw Card)';
+                this.stickBtn.textContent = 'Stick';
+            }
         }
     }
 
-    isCardPlayable(card, topCard) {
-        if (!this.gameState.gameStarted || !this.isMyTurn || !topCard) return false;
-        
-        return card.rank === '7' || 
-               card.suit === topCard.suit || 
-               card.rank === topCard.rank;
-    }
-
     renderCard(card) {
-        const suitSymbols = {
-            'hearts': '♥',
-            'diamonds': '♦',
-            'clubs': '♣',
-            'spades': '♠'
-        };
-
         return `
-            <div class="card ${card.suit}">
-                <span class="card-rank">${card.rank}</span>
-                <span class="card-suit">${suitSymbols[card.suit]}</span>
-                <span class="card-center">${suitSymbols[card.suit]}</span>
+            <div class="card">
+                <span class="card-center">${card.value}</span>
             </div>
         `;
-    }
-
-    formatCard(card) {
-        const suitSymbols = {
-            'hearts': '♥',
-            'diamonds': '♦',
-            'clubs': '♣',
-            'spades': '♠'
-        };
-        
-        return `${card.rank}${suitSymbols[card.suit]}`;
     }
 
     showConnectionScreen() {

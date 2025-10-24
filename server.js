@@ -13,12 +13,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Game state
 let gameState = {
-    players: {},  // playerNumber -> {id, name, cards, connected}
+    players: {},  // playerNumber -> {id, name, cards, connected, points, status}
     currentPlayer: 1,
     gameStarted: false,
+    roundInProgress: false,
     deck: [],
-    discardPile: [],
-    direction: 1, // 1 for clockwise, -1 for counterclockwise
+    roundNumber: 1,
     adminPassword: 'admin123' // Simple admin authentication
 };
 
@@ -32,25 +32,16 @@ const playerSlots = Array.from({length: MAX_PLAYERS}, (_, i) => ({
 
 // Flip 7 game logic
 function createDeck() {
-    const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const deck = [];
     
-    for (const suit of suits) {
-        for (const rank of ranks) {
-            deck.push({ suit, rank, value: getRankValue(rank) });
+    // 1x card with value 1; 2x cards with value 2; ... 12x cards with value 12
+    for (let value = 1; value <= 12; value++) {
+        for (let count = 0; count < value; count++) {
+            deck.push({ value: value, id: `${value}-${count}` });
         }
     }
     
     return shuffleDeck(deck);
-}
-
-function getRankValue(rank) {
-    if (rank === 'A') return 1;
-    if (rank === 'J') return 11;
-    if (rank === 'Q') return 12;
-    if (rank === 'K') return 13;
-    return parseInt(rank);
 }
 
 function shuffleDeck(deck) {
@@ -62,21 +53,61 @@ function shuffleDeck(deck) {
     return shuffled;
 }
 
-function dealCards() {
-    const activePlayers = Object.keys(gameState.players).length;
-    const cardsPerPlayer = Math.floor(52 / activePlayers);
-    
+function startNewRound() {
     gameState.deck = createDeck();
+    gameState.roundInProgress = true;
     
-    // Deal cards to players
-    Object.keys(gameState.players).forEach((playerNumber, index) => {
-        gameState.players[playerNumber].cards = gameState.deck.splice(0, cardsPerPlayer);
+    // Reset all players for new round
+    Object.keys(gameState.players).forEach(playerNumber => {
+        gameState.players[playerNumber].cards = [];
+        gameState.players[playerNumber].status = 'playing'; // playing, stuck, bust, flip7
+        gameState.players[playerNumber].hasDrawnFirstCard = false;
     });
     
-    // Start discard pile with first card
-    if (gameState.deck.length > 0) {
-        gameState.discardPile = [gameState.deck.pop()];
+    // Set first player
+    const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
+    gameState.currentPlayer = playerNumbers[0];
+}
+
+function drawCard(playerNumber) {
+    if (gameState.deck.length === 0) {
+        return null;
     }
+    
+    const card = gameState.deck.pop();
+    gameState.players[playerNumber].cards.push(card);
+    return card;
+}
+
+function hasCardValue(playerNumber, value) {
+    return gameState.players[playerNumber].cards.some(card => card.value === value);
+}
+
+function calculateHandValue(playerNumber) {
+    return gameState.players[playerNumber].cards.reduce((sum, card) => sum + card.value, 0);
+}
+
+function checkRoundEnd() {
+    const playingPlayers = Object.values(gameState.players).filter(p => p.status === 'playing');
+    return playingPlayers.length === 0;
+}
+
+function nextPlayer() {
+    const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
+    const currentIndex = playerNumbers.indexOf(gameState.currentPlayer);
+    
+    // Find next active player
+    for (let i = 1; i <= playerNumbers.length; i++) {
+        const nextIndex = (currentIndex + i) % playerNumbers.length;
+        const nextPlayerNumber = playerNumbers[nextIndex];
+        if (gameState.players[nextPlayerNumber].status === 'playing') {
+            gameState.currentPlayer = nextPlayerNumber;
+            return;
+        }
+    }
+    
+    // No active players left, round is over
+    gameState.roundInProgress = false;
 }
 
 function getAvailablePlayerSlot() {
@@ -101,6 +132,29 @@ function assignPlayerSlot(playerId) {
     return null;
 }
 
+function endRound() {
+    // Award points to players
+    Object.keys(gameState.players).forEach(playerNumber => {
+        const player = gameState.players[playerNumber];
+        if (player.roundPoints !== undefined) {
+            player.points += player.roundPoints;
+        }
+    });
+    
+    io.to('game').emit('round-ended', {
+        roundNumber: gameState.roundNumber,
+        results: Object.keys(gameState.players).map(pNum => ({
+            playerNumber: pNum,
+            playerName: gameState.players[pNum].name,
+            roundPoints: gameState.players[pNum].roundPoints || 0,
+            totalPoints: gameState.players[pNum].points,
+            status: gameState.players[pNum].status
+        }))
+    });
+    
+    gameState.roundNumber++;
+}
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
@@ -121,7 +175,10 @@ io.on('connection', (socket) => {
                     name: playerName || `Player ${playerNumber}`,
                     cards: [],
                     connected: true,
-                    number: parseInt(playerNumber)
+                    number: parseInt(playerNumber),
+                    points: 0,
+                    status: 'waiting',
+                    hasDrawnFirstCard: false
                 };
                 
                 socket.playerNumber = playerNumber;
@@ -143,7 +200,10 @@ io.on('connection', (socket) => {
                 name: playerName || `Player ${assignedNumber}`,
                 cards: [],
                 connected: true,
-                number: assignedNumber
+                number: assignedNumber,
+                points: 0,
+                status: 'waiting',
+                hasDrawnFirstCard: false
             };
             
             socket.playerNumber = assignedNumber;
@@ -185,12 +245,12 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle card play
-    socket.on('play-card', (data) => {
-        const { cardIndex } = data;
+    // Handle player action (draw card, stick)
+    socket.on('player-action', (data) => {
+        const { action } = data; // 'draw' or 'stick'
         const playerNumber = socket.playerNumber;
         
-        if (!playerNumber || !gameState.players[playerNumber] || !gameState.gameStarted) {
+        if (!playerNumber || !gameState.players[playerNumber] || !gameState.roundInProgress) {
             return;
         }
         
@@ -200,51 +260,110 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (cardIndex < 0 || cardIndex >= player.cards.length) {
-            socket.emit('invalid-move', { message: 'Invalid card' });
+        if (player.status !== 'playing') {
+            socket.emit('invalid-move', { message: 'You are not actively playing' });
             return;
         }
-        
-        const playedCard = player.cards[cardIndex];
-        const topCard = gameState.discardPile[gameState.discardPile.length - 1];
-        
-        // Flip 7 rules: play same suit or rank, or any 7
-        if (playedCard.rank === '7' || 
-            playedCard.suit === topCard.suit || 
-            playedCard.rank === topCard.rank) {
-            
-            // Remove card from player's hand
-            player.cards.splice(cardIndex, 1);
-            gameState.discardPile.push(playedCard);
-            
-            // Special card effects
-            if (playedCard.rank === '7') {
-                // Reverse direction
-                gameState.direction *= -1;
+
+        if (action === 'draw') {
+            // First turn: must draw
+            if (!player.hasDrawnFirstCard) {
+                const drawnCard = drawCard(playerNumber);
+                if (!drawnCard) {
+                    socket.emit('game-error', { message: 'No cards left in deck' });
+                    return;
+                }
+                
+                player.hasDrawnFirstCard = true;
+                
+                io.to('game').emit('card-drawn', {
+                    playerNumber,
+                    playerName: player.name,
+                    card: drawnCard,
+                    isFirstCard: true
+                });
+                
+                nextPlayer();
+            } else {
+                // Subsequent turns: twist
+                const drawnCard = drawCard(playerNumber);
+                if (!drawnCard) {
+                    socket.emit('game-error', { message: 'No cards left in deck' });
+                    return;
+                }
+                
+                // Check for bust (same value already in hand)
+                const cardValues = player.cards.map(c => c.value);
+                const uniqueValues = new Set(cardValues);
+                
+                if (cardValues.length !== uniqueValues.size) {
+                    // Player went bust
+                    player.status = 'bust';
+                    player.roundPoints = 0;
+                    
+                    io.to('game').emit('player-bust', {
+                        playerNumber,
+                        playerName: player.name,
+                        drawnCard: drawnCard
+                    });
+                } else {
+                    // Check for Flip 7 (7 unique values)
+                    if (uniqueValues.size === 7) {
+                        player.status = 'flip7';
+                        const handValue = calculateHandValue(playerNumber);
+                        player.roundPoints = handValue + 15;
+                        
+                        io.to('game').emit('flip-seven', {
+                            playerNumber,
+                            playerName: player.name,
+                            handValue: handValue,
+                            totalPoints: player.roundPoints
+                        });
+                        
+                        // Round ends immediately
+                        gameState.roundInProgress = false;
+                        endRound();
+                        return;
+                    } else {
+                        io.to('game').emit('card-drawn', {
+                            playerNumber,
+                            playerName: player.name,
+                            card: drawnCard,
+                            uniqueValues: uniqueValues.size
+                        });
+                    }
+                }
+                
+                // Check if round should end
+                if (checkRoundEnd()) {
+                    endRound();
+                } else {
+                    nextPlayer();
+                }
             }
-            
-            // Check for win condition
-            if (player.cards.length === 0) {
-                gameState.winner = playerNumber;
-                io.to('game').emit('game-won', { winner: player.name, playerNumber });
+        } else if (action === 'stick') {
+            if (!player.hasDrawnFirstCard) {
+                socket.emit('invalid-move', { message: 'Must draw at least one card before sticking' });
                 return;
             }
             
-            // Next player's turn
-            const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
-            const currentIndex = playerNumbers.indexOf(gameState.currentPlayer);
-            const nextIndex = (currentIndex + gameState.direction + playerNumbers.length) % playerNumbers.length;
-            gameState.currentPlayer = playerNumbers[nextIndex];
+            player.status = 'stuck';
+            player.roundPoints = calculateHandValue(playerNumber);
             
-            io.to('game').emit('game-state', gameState);
-            io.to('game').emit('card-played', { 
-                playerNumber, 
-                playerName: player.name, 
-                card: playedCard 
+            io.to('game').emit('player-stuck', {
+                playerNumber,
+                playerName: player.name,
+                handValue: player.roundPoints
             });
-        } else {
-            socket.emit('invalid-move', { message: 'Invalid card play' });
+            
+            if (checkRoundEnd()) {
+                endRound();
+            } else {
+                nextPlayer();
+            }
         }
+        
+        io.to('game').emit('game-state', gameState);
     });
 
     // Admin functions
@@ -258,14 +377,17 @@ io.on('connection', (socket) => {
         // Reset game state but keep players
         Object.keys(gameState.players).forEach(playerNumber => {
             gameState.players[playerNumber].cards = [];
+            gameState.players[playerNumber].points = 0;
+            gameState.players[playerNumber].status = 'waiting';
+            gameState.players[playerNumber].hasDrawnFirstCard = false;
+            gameState.players[playerNumber].roundPoints = undefined;
         });
         
         gameState.gameStarted = false;
+        gameState.roundInProgress = false;
         gameState.currentPlayer = 1;
         gameState.deck = [];
-        gameState.discardPile = [];
-        gameState.direction = 1;
-        gameState.winner = null;
+        gameState.roundNumber = 1;
         
         io.to('game').emit('game-restarted');
         io.to('game').emit('game-state', gameState);
@@ -301,7 +423,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Start game
+    // Start game/round
     socket.on('start-game', () => {
         const playerCount = Object.keys(gameState.players).length;
         if (playerCount < 2) {
@@ -309,14 +431,36 @@ io.on('connection', (socket) => {
             return;
         }
         
-        dealCards();
-        gameState.gameStarted = true;
-        gameState.currentPlayer = Math.min(...Object.keys(gameState.players).map(n => parseInt(n)));
+        if (!gameState.gameStarted) {
+            gameState.gameStarted = true;
+            io.to('game').emit('game-started');
+            console.log('Game started with', playerCount, 'players');
+        }
         
-        io.to('game').emit('game-started');
+        startNewRound();
+        io.to('game').emit('round-started', { 
+            roundNumber: gameState.roundNumber,
+            deckSize: gameState.deck.length 
+        });
         io.to('game').emit('game-state', gameState);
         
-        console.log('Game started with', playerCount, 'players');
+        console.log(`Round ${gameState.roundNumber} started`);
+    });
+
+    socket.on('start-next-round', () => {
+        if (!gameState.gameStarted) {
+            socket.emit('start-error', { message: 'Game not started' });
+            return;
+        }
+        
+        startNewRound();
+        io.to('game').emit('round-started', { 
+            roundNumber: gameState.roundNumber,
+            deckSize: gameState.deck.length 
+        });
+        io.to('game').emit('game-state', gameState);
+        
+        console.log(`Round ${gameState.roundNumber} started`);
     });
 
     // Handle disconnection

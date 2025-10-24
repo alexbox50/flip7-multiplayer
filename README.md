@@ -13,15 +13,34 @@ A real-time multiplayer browser-based implementation of the Flip 7 card game, su
 
 ## Game Rules - Flip 7
 
-Flip 7 is a card game similar to Crazy Eights with special rules:
+Flip 7 is a card game focused on collecting unique card values without going bust:
 
-1. **Objective**: Be the first player to get rid of all your cards
-2. **Starting**: Each player receives an equal number of cards from a standard 52-card deck
-3. **Gameplay**: 
-   - Players take turns playing cards that match either the suit or rank of the top card
-   - **Special Rule**: 7s can be played on any card
-   - **Special Effect**: When a 7 is played, the direction of play reverses
-4. **Winning**: First player to play all their cards wins
+### Deck Composition
+- **1x** card with value 1
+- **2x** cards with value 2  
+- **3x** cards with value 3
+- **4x** cards with value 4
+- ... and so on up to **12x** cards with value 12
+- **Total**: 78 cards (1+2+3+...+12)
+
+### Gameplay
+1. **First Turn**: Every player must draw one card from the draw pile
+2. **Subsequent Turns**: Players choose to either:
+   - **Stick**: End their turn and score points equal to the sum of their cards
+   - **Twist**: Draw another card from the pile
+
+### Bust Condition
+- If you draw a card with the **same value** as a card already in your hand, you go **BUST**
+- Bust players score **0 points** for that round
+
+### Flip 7 Bonus
+- If you successfully draw a **7th unique value card**, you achieve **"Flip 7"**
+- You immediately score your hand value **plus 15 bonus points**
+- The round ends immediately when someone hits Flip 7
+
+### Round End
+- The round ends when all players have either stuck, gone bust, or hit Flip 7
+- Players accumulate points across multiple rounds
 
 ## Installation & Setup
 
@@ -59,10 +78,13 @@ npm run dev
 
 ### Playing the Game
 1. Wait for other players to join (minimum 2 players)
-2. Any player can click "Start Game" to begin
-3. Play cards that match the suit or rank of the top card, or play any 7
-4. Click on cards in your hand to play them when it's your turn
-5. First player to empty their hand wins!
+2. Any player can click "Start Game" to begin the first round
+3. On your turn:
+   - **First turn**: Must draw a card (no choice)
+   - **Later turns**: Choose "Twist" (draw) or "Stick" (end with current points)
+4. Avoid drawing duplicate values or you'll go bust!
+5. Try to get 7 unique values for the Flip 7 bonus!
+6. After each round, click "Start Next Round" to continue
 
 ### Admin Functions
 Admins can use the admin panel with the password `admin123` (change in server.js):
