@@ -139,6 +139,8 @@ class Flip7Game {
             } else {
                 this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
             }
+            // Force update display after card is drawn
+            this.updateGameDisplay();
         });
 
         this.socket.on('player-stuck', (data) => {
@@ -373,10 +375,14 @@ class Flip7Game {
     updatePlayerHand() {
         this.handCards.innerHTML = '';
         
-        if (!this.gameState.players[this.playerNumber]) return;
+        if (!this.gameState.players[this.playerNumber]) {
+            // No player data - reset displays
+            this.uniqueCount.textContent = '0';
+            this.totalValue.textContent = '0';
+            return;
+        }
         
-        const playerCards = this.gameState.players[this.playerNumber].cards;
-        const topCard = this.gameState.discardPile[this.gameState.discardPile.length - 1];
+        const playerCards = this.gameState.players[this.playerNumber].cards || [];
         
         // Calculate unique values and total
         const uniqueValues = new Set(playerCards.map(card => card.value));
