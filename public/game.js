@@ -44,6 +44,7 @@ class Flip7Game {
         this.restartGameBtn = document.getElementById('restart-game-btn');
         this.dropPlayerNumber = document.getElementById('drop-player-number');
         this.dropPlayerBtn = document.getElementById('drop-player-btn');
+        this.kickAllRestartBtn = document.getElementById('kick-all-restart-btn');
     }
 
     setupEventListeners() {
@@ -58,6 +59,7 @@ class Flip7Game {
         // Admin controls
         this.restartGameBtn.addEventListener('click', () => this.restartGame());
         this.dropPlayerBtn.addEventListener('click', () => this.dropPlayer());
+        this.kickAllRestartBtn.addEventListener('click', () => this.kickAllAndRestart());
 
         // Enter key handlers
         this.playerNameInput.addEventListener('keypress', (e) => {
@@ -172,6 +174,24 @@ class Flip7Game {
         this.socket.on('admin-error', (data) => {
             this.showMessage(data.message, 'error');
         });
+
+        this.socket.on('admin-success', (data) => {
+            this.showMessage(data.message, 'success');
+        });
+
+        this.socket.on('kicked-by-admin', (data) => {
+            alert(data.message);
+            this.showConnectionScreen();
+            this.showStatus('Kicked by admin - game was reset', 'error');
+        });
+
+        this.socket.on('game-completely-reset', () => {
+            this.showMessage('Game was completely reset by admin', 'info');
+            this.gameState = null;
+            this.updateGameDisplay();
+            this.startGameBtn.style.display = 'inline-block';
+            this.startRoundBtn.style.display = 'none';
+        });
     }
 
     joinGame() {
@@ -262,10 +282,35 @@ class Flip7Game {
         this.dropPlayerNumber.value = '';
     }
 
+    kickAllAndRestart() {
+        const password = this.adminPassword.value;
+        if (!password) {
+            this.showMessage('Please enter admin password', 'error');
+            return;
+        }
+
+        if (confirm('This will kick ALL players and completely restart the game. Are you sure?')) {
+            this.socket.emit('admin-kick-all-restart', { password });
+            this.adminPassword.value = '';
+        }
+    }
+
     // Removed playCard function - no longer needed for Flip 7
 
     updateGameDisplay() {
-        if (!this.gameState) return;
+        if (!this.gameState) {
+            // Clear display when no game state
+            this.playersList.innerHTML = '';
+            this.handCards.innerHTML = '';
+            this.currentTurn.innerHTML = 'No game in progress';
+            this.cardsLeft.textContent = '0';
+            this.currentRound.textContent = '1';
+            this.uniqueCount.textContent = '0';
+            this.totalValue.textContent = '0';
+            this.drawBtn.disabled = true;
+            this.stickBtn.disabled = true;
+            return;
+        }
 
         this.updatePlayersList();
         this.updateDeckInfo();

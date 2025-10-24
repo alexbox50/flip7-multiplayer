@@ -463,6 +463,48 @@ io.on('connection', (socket) => {
         console.log(`Round ${gameState.roundNumber} started`);
     });
 
+    socket.on('admin-kick-all-restart', (data) => {
+        const { password } = data;
+        if (password !== gameState.adminPassword) {
+            socket.emit('admin-error', { message: 'Invalid admin password' });
+            return;
+        }
+        
+        console.log('Admin kicked all players and restarted game');
+        
+        // Disconnect all players except the admin who triggered this
+        Object.keys(gameState.players).forEach(playerNumber => {
+            const player = gameState.players[playerNumber];
+            if (player.id !== socket.id) {
+                const playerSocket = io.sockets.sockets.get(player.id);
+                if (playerSocket) {
+                    playerSocket.emit('kicked-by-admin', { message: 'You were kicked by admin - game reset' });
+                    playerSocket.disconnect();
+                }
+            }
+        });
+        
+        // Reset all game state completely
+        gameState.players = {};
+        gameState.currentPlayer = 1;
+        gameState.gameStarted = false;
+        gameState.roundInProgress = false;
+        gameState.deck = [];
+        gameState.roundNumber = 1;
+        
+        // Reset all player slots
+        playerSlots.forEach(slot => {
+            slot.occupied = false;
+            slot.playerId = null;
+        });
+        
+        // Broadcast the complete reset
+        io.to('game').emit('game-completely-reset');
+        socket.emit('admin-success', { message: 'All players kicked and game reset' });
+        
+        console.log('Game completely reset by admin');
+    });
+
     // Handle disconnection
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);

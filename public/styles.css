@@ -446,6 +446,15 @@ body {
     background: #e55a2b;
 }
 
+.danger-btn {
+    background: #dc3545 !important;
+    color: white;
+}
+
+.danger-btn:hover {
+    background: #c82333 !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .game-area {
