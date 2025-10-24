@@ -294,10 +294,18 @@ body {
     background: rgba(0, 0, 0, 0.3);
     padding: 20px;
     border-radius: 10px;
-    text-align: center;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    gap: 20px;
 }
 
-.deck-area h4 {
+.pile-container {
+    text-align: center;
+    flex: 1;
+}
+
+.pile-container h4 {
     margin-bottom: 15px;
 }
 

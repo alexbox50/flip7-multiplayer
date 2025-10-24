@@ -57,12 +57,23 @@
                 <!-- Game Board -->
                 <div class="game-board">
                     <div class="deck-area">
-                        <h4>Draw Pile</h4>
-                        <div id="deck-info">
-                            <div id="deck-stack" class="deck-stack">
-                                <!-- Cards will be dynamically added here -->
+                        <div class="pile-container">
+                            <h4>Draw Pile</h4>
+                            <div id="deck-info">
+                                <div id="deck-stack" class="deck-stack">
+                                    <!-- Cards will be dynamically added here -->
+                                </div>
+                                <div id="deck-count">0 cards</div>
                             </div>
-                            <div id="deck-count">0 cards</div>
+                        </div>
+                        <div class="pile-container">
+                            <h4>Discard Pile</h4>
+                            <div id="discard-info">
+                                <div id="discard-stack" class="deck-stack">
+                                    <!-- Discard cards will be dynamically added here -->
+                                </div>
+                                <div id="discard-count">0 cards</div>
+                            </div>
                         </div>
                     </div>
 

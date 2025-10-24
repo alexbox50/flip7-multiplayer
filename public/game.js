@@ -30,6 +30,8 @@ class Flip7Game {
         this.leaveGameBtn = document.getElementById('leave-game-btn');
         this.deckCount = document.getElementById('deck-count');
         this.deckStack = document.getElementById('deck-stack');
+        this.discardCount = document.getElementById('discard-count');
+        this.discardStack = document.getElementById('discard-stack');
         this.currentRound = document.getElementById('current-round');
         this.cardsLeft = document.getElementById('cards-left');
         this.drawBtn = document.getElementById('draw-btn');
@@ -127,6 +129,10 @@ class Flip7Game {
             this.startRoundBtn.style.display = 'none';
             this.currentRound.textContent = data.roundNumber;
             this.cardsLeft.textContent = data.deckSize;
+        });
+
+        this.socket.on('deck-replenished', (data) => {
+            this.showMessage(`📚 Discard pile shuffled into new draw pile! (${data.newDeckSize} cards)`, 'info');
         });
 
         this.socket.on('game-restarted', () => {
@@ -471,18 +477,21 @@ class Flip7Game {
 
     updateDeckInfo() {
         const cardsRemaining = this.gameState.deck ? this.gameState.deck.length : 0;
+        const discardCount = this.gameState.discardPile ? this.gameState.discardPile.length : 0;
         
-        // Update text counter
+        // Update text counters
         this.cardsLeft.textContent = cardsRemaining;
         this.deckCount.textContent = `${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}`;
+        this.discardCount.textContent = `${discardCount} card${discardCount !== 1 ? 's' : ''}`;
         
         // Update round number
         if (this.gameState.roundNumber) {
             this.currentRound.textContent = this.gameState.roundNumber;
         }
         
-        // Create visual card stack
+        // Create visual card stacks
         this.updateDeckStack(cardsRemaining);
+        this.updateDiscardStack(discardCount);
     }
 
     updateDeckStack(cardCount) {
@@ -551,6 +560,77 @@ class Flip7Game {
                 z-index: ${maxVisualCards + 1};
             `;
             this.deckStack.appendChild(moreIndicator);
+        }
+    }
+
+    updateDiscardStack(cardCount) {
+        // Clear existing stack
+        this.discardStack.innerHTML = '';
+        
+        if (cardCount === 0) {
+            // Show empty discard message
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'empty-discard';
+            emptyMessage.textContent = 'Empty';
+            emptyMessage.style.cssText = `
+                color: #666;
+                font-style: italic;
+                text-align: center;
+                margin-top: 40px;
+            `;
+            this.discardStack.appendChild(emptyMessage);
+            return;
+        }
+        
+        // Calculate how many visual cards to show (max 10 for performance)
+        const maxVisualCards = 10;
+        const visualCardCount = Math.min(cardCount, maxVisualCards);
+        
+        // Calculate spacing based on available height and number of cards
+        const maxHeight = 100; // Available height in pixels
+        const cardThickness = Math.min(3, maxHeight / Math.max(visualCardCount, 1));
+        
+        // Create visual cards (different style for discard pile)
+        for (let i = 0; i < visualCardCount; i++) {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'deck-stack-card discard-card';
+            
+            // Position cards with slight offset for 3D effect
+            const bottomOffset = i * cardThickness;
+            const horizontalOffset = i * 0.5; // Slight horizontal offset
+            
+            cardElement.style.cssText = `
+                bottom: ${bottomOffset}px;
+                left: ${horizontalOffset}px;
+                z-index: ${maxVisualCards - i};
+                background: linear-gradient(135deg, #654321, #8b4513);
+                border-color: #4a2c17;
+            `;
+            
+            this.discardStack.appendChild(cardElement);
+        }
+        
+        // Add indicator if there are more cards than visual representation
+        if (cardCount > maxVisualCards) {
+            const moreIndicator = document.createElement('div');
+            moreIndicator.textContent = `+${cardCount - maxVisualCards}`;
+            moreIndicator.style.cssText = `
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background: #8b4513;
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                z-index: ${maxVisualCards + 1};
+            `;
+            this.discardStack.appendChild(moreIndicator);
         }
     }
 

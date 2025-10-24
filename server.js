@@ -18,6 +18,7 @@ let gameState = {
     gameStarted: false,
     roundInProgress: false,
     deck: [],
+    discardPile: [], // Cards discarded from players' hands
     roundNumber: 1,
     roundStartPlayer: 1, // Track who started the current round
     adminPassword: 'admin123' // Simple admin authentication
@@ -55,7 +56,13 @@ function shuffleDeck(deck) {
 }
 
 function startNewRound() {
-    gameState.deck = createDeck();
+    // Only create a fresh deck for the first round of a new game
+    if (gameState.roundNumber === 1) {
+        gameState.deck = createDeck();
+        gameState.discardPile = [];
+    }
+    // For subsequent rounds, continue with existing deck and discard pile
+    
     gameState.roundInProgress = true;
     
     // Reset all players for new round
@@ -82,6 +89,18 @@ function startNewRound() {
 }
 
 function drawCard(playerNumber) {
+    // If deck is empty, shuffle discard pile into deck
+    if (gameState.deck.length === 0 && gameState.discardPile.length > 0) {
+        console.log('Draw pile empty, shuffling discard pile into new draw pile');
+        gameState.deck = shuffleDeck([...gameState.discardPile]);
+        gameState.discardPile = [];
+        
+        // Notify all players that deck was replenished
+        io.to('game').emit('deck-replenished', {
+            newDeckSize: gameState.deck.length
+        });
+    }
+    
     if (gameState.deck.length === 0) {
         return null;
     }
@@ -145,6 +164,14 @@ function assignPlayerSlot(playerId) {
 }
 
 function endRound() {
+    // Move all player cards to discard pile
+    Object.keys(gameState.players).forEach(playerNumber => {
+        const player = gameState.players[playerNumber];
+        if (player.cards && player.cards.length > 0) {
+            gameState.discardPile.push(...player.cards);
+        }
+    });
+    
     // Award points to players
     Object.keys(gameState.players).forEach(playerNumber => {
         const player = gameState.players[playerNumber];
@@ -469,6 +496,7 @@ io.on('connection', (socket) => {
         gameState.roundInProgress = false;
         gameState.currentPlayer = 1;
         gameState.deck = [];
+        gameState.discardPile = [];
         gameState.roundNumber = 1;
         gameState.roundStartPlayer = 1;
         
@@ -583,6 +611,7 @@ io.on('connection', (socket) => {
         gameState.gameStarted = false;
         gameState.roundInProgress = false;
         gameState.deck = [];
+        gameState.discardPile = [];
         gameState.roundNumber = 1;
         gameState.roundStartPlayer = 1;
         
