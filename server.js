@@ -19,6 +19,7 @@ let gameState = {
     roundInProgress: false,
     deck: [],
     roundNumber: 1,
+    roundStartPlayer: 1, // Track who started the current round
     adminPassword: 'admin123' // Simple admin authentication
 };
 
@@ -64,9 +65,20 @@ function startNewRound() {
         gameState.players[playerNumber].hasDrawnFirstCard = false;
     });
     
-    // Set first player
+    // Determine starting player (rotate from previous round)
     const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
-    gameState.currentPlayer = playerNumbers[0];
+    
+    if (gameState.roundNumber === 1) {
+        // First round: start with lowest numbered player
+        gameState.roundStartPlayer = playerNumbers[0];
+    } else {
+        // Subsequent rounds: start with next player after previous round's starter
+        const previousStarterIndex = playerNumbers.indexOf(gameState.roundStartPlayer);
+        const nextStarterIndex = (previousStarterIndex + 1) % playerNumbers.length;
+        gameState.roundStartPlayer = playerNumbers[nextStarterIndex];
+    }
+    
+    gameState.currentPlayer = gameState.roundStartPlayer;
 }
 
 function drawCard(playerNumber) {
@@ -141,6 +153,13 @@ function endRound() {
         }
     });
     
+    // Calculate who will start the next round
+    const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
+    const currentStarterIndex = playerNumbers.indexOf(gameState.roundStartPlayer);
+    const nextStarterIndex = (currentStarterIndex + 1) % playerNumbers.length;
+    const nextRoundStarter = playerNumbers[nextStarterIndex];
+    const nextStarterName = gameState.players[nextRoundStarter]?.name || `Player ${nextRoundStarter}`;
+    
     io.to('game').emit('round-ended', {
         roundNumber: gameState.roundNumber,
         results: Object.keys(gameState.players).map(pNum => ({
@@ -149,7 +168,11 @@ function endRound() {
             roundPoints: gameState.players[pNum].roundPoints || 0,
             totalPoints: gameState.players[pNum].points,
             status: gameState.players[pNum].status
-        }))
+        })),
+        nextRoundStarter: {
+            playerNumber: nextRoundStarter,
+            playerName: nextStarterName
+        }
     });
     
     gameState.roundNumber++;
@@ -388,6 +411,7 @@ io.on('connection', (socket) => {
         gameState.currentPlayer = 1;
         gameState.deck = [];
         gameState.roundNumber = 1;
+        gameState.roundStartPlayer = 1;
         
         io.to('game').emit('game-restarted');
         io.to('game').emit('game-state', gameState);
@@ -438,13 +462,18 @@ io.on('connection', (socket) => {
         }
         
         startNewRound();
+        const startingPlayerName = gameState.players[gameState.roundStartPlayer]?.name || `Player ${gameState.roundStartPlayer}`;
         io.to('game').emit('round-started', { 
             roundNumber: gameState.roundNumber,
-            deckSize: gameState.deck.length 
+            deckSize: gameState.deck.length,
+            startingPlayer: {
+                playerNumber: gameState.roundStartPlayer,
+                playerName: startingPlayerName
+            }
         });
         io.to('game').emit('game-state', gameState);
         
-        console.log(`Round ${gameState.roundNumber} started`);
+        console.log(`Round ${gameState.roundNumber} started with ${startingPlayerName}`);
     });
 
     socket.on('start-next-round', () => {
@@ -454,13 +483,18 @@ io.on('connection', (socket) => {
         }
         
         startNewRound();
+        const startingPlayerName = gameState.players[gameState.roundStartPlayer]?.name || `Player ${gameState.roundStartPlayer}`;
         io.to('game').emit('round-started', { 
             roundNumber: gameState.roundNumber,
-            deckSize: gameState.deck.length 
+            deckSize: gameState.deck.length,
+            startingPlayer: {
+                playerNumber: gameState.roundStartPlayer,
+                playerName: startingPlayerName
+            }
         });
         io.to('game').emit('game-state', gameState);
         
-        console.log(`Round ${gameState.roundNumber} started`);
+        console.log(`Round ${gameState.roundNumber} started with ${startingPlayerName}`);
     });
 
     socket.on('admin-kick-all-restart', (data) => {
@@ -491,6 +525,7 @@ io.on('connection', (socket) => {
         gameState.roundInProgress = false;
         gameState.deck = [];
         gameState.roundNumber = 1;
+        gameState.roundStartPlayer = 1;
         
         // Reset all player slots
         playerSlots.forEach(slot => {

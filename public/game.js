@@ -114,7 +114,14 @@ class Flip7Game {
         });
 
         this.socket.on('round-started', (data) => {
-            this.showMessage(`Round ${data.roundNumber} started! Draw your first card.`, 'info');
+            let message = `Round ${data.roundNumber} started!`;
+            if (data.startingPlayer) {
+                message += ` ${data.startingPlayer.playerName} goes first.`;
+                if (data.startingPlayer.playerNumber === this.playerNumber) {
+                    message += ` Draw your first card!`;
+                }
+            }
+            this.showMessage(message, 'info');
             this.startRoundBtn.style.display = 'none';
             this.currentRound.textContent = data.roundNumber;
             this.cardsLeft.textContent = data.deckSize;
@@ -151,6 +158,9 @@ class Flip7Game {
             data.results.forEach(result => {
                 message += `${result.playerName}: ${result.roundPoints} points (${result.status})\n`;
             });
+            if (data.nextRoundStarter) {
+                message += `\nNext round will start with: ${data.nextRoundStarter.playerName} (#${data.nextRoundStarter.playerNumber})`;
+            }
             this.showMessage(message, 'info');
             this.startRoundBtn.style.display = 'inline-block';
         });
