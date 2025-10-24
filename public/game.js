@@ -29,6 +29,7 @@ class Flip7Game {
         this.startRoundBtn = document.getElementById('start-round-btn');
         this.leaveGameBtn = document.getElementById('leave-game-btn');
         this.deckCount = document.getElementById('deck-count');
+        this.deckStack = document.getElementById('deck-stack');
         this.currentRound = document.getElementById('current-round');
         this.cardsLeft = document.getElementById('cards-left');
         this.drawBtn = document.getElementById('draw-btn');
@@ -371,6 +372,8 @@ class Flip7Game {
             this.handCards.innerHTML = '';
             this.currentTurn.innerHTML = 'No game in progress';
             this.cardsLeft.textContent = '0';
+            this.deckCount.textContent = '0 cards';
+            this.deckStack.innerHTML = '';
             this.currentRound.textContent = '1';
             this.uniqueCount.textContent = '0';
             this.totalValue.textContent = '0';
@@ -467,11 +470,87 @@ class Flip7Game {
     }
 
     updateDeckInfo() {
-        if (this.gameState.deck) {
-            this.cardsLeft.textContent = this.gameState.deck.length;
-            if (this.gameState.roundNumber) {
-                this.currentRound.textContent = this.gameState.roundNumber;
-            }
+        const cardsRemaining = this.gameState.deck ? this.gameState.deck.length : 0;
+        
+        // Update text counter
+        this.cardsLeft.textContent = cardsRemaining;
+        this.deckCount.textContent = `${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}`;
+        
+        // Update round number
+        if (this.gameState.roundNumber) {
+            this.currentRound.textContent = this.gameState.roundNumber;
+        }
+        
+        // Create visual card stack
+        this.updateDeckStack(cardsRemaining);
+    }
+
+    updateDeckStack(cardCount) {
+        // Clear existing stack
+        this.deckStack.innerHTML = '';
+        
+        if (cardCount === 0) {
+            // Show empty deck message
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'empty-deck';
+            emptyMessage.textContent = 'Empty';
+            emptyMessage.style.cssText = `
+                color: #666;
+                font-style: italic;
+                text-align: center;
+                margin-top: 40px;
+            `;
+            this.deckStack.appendChild(emptyMessage);
+            return;
+        }
+        
+        // Calculate how many visual cards to show (max 10 for performance)
+        const maxVisualCards = 10;
+        const visualCardCount = Math.min(cardCount, maxVisualCards);
+        
+        // Calculate spacing based on available height and number of cards
+        const maxHeight = 100; // Available height in pixels
+        const cardThickness = Math.min(3, maxHeight / Math.max(visualCardCount, 1));
+        
+        // Create visual cards
+        for (let i = 0; i < visualCardCount; i++) {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'deck-stack-card';
+            
+            // Position cards with slight offset for 3D effect
+            const bottomOffset = i * cardThickness;
+            const horizontalOffset = i * 0.5; // Slight horizontal offset
+            
+            cardElement.style.cssText = `
+                bottom: ${bottomOffset}px;
+                left: ${horizontalOffset}px;
+                z-index: ${maxVisualCards - i};
+            `;
+            
+            this.deckStack.appendChild(cardElement);
+        }
+        
+        // Add indicator if there are more cards than visual representation
+        if (cardCount > maxVisualCards) {
+            const moreIndicator = document.createElement('div');
+            moreIndicator.textContent = `+${cardCount - maxVisualCards}`;
+            moreIndicator.style.cssText = `
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background: #ff6b35;
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                z-index: ${maxVisualCards + 1};
+            `;
+            this.deckStack.appendChild(moreIndicator);
         }
     }
 
