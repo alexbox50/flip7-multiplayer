@@ -153,14 +153,44 @@ function endRound() {
         }
     });
     
-    // Calculate who will start the next round
-    const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
-    const currentStarterIndex = playerNumbers.indexOf(gameState.roundStartPlayer);
-    const nextStarterIndex = (currentStarterIndex + 1) % playerNumbers.length;
-    const nextRoundStarter = playerNumbers[nextStarterIndex];
-    const nextStarterName = gameState.players[nextRoundStarter]?.name || `Player ${nextRoundStarter}`;
+    // Check for game completion (200+ points)
+    const playersWithScores = Object.values(gameState.players)
+        .map(player => ({ ...player, totalPoints: player.points }))
+        .sort((a, b) => b.totalPoints - a.totalPoints);
     
-    io.to('game').emit('round-ended', {
+    const highestScore = playersWithScores[0]?.totalPoints || 0;
+    const playersAt200Plus = playersWithScores.filter(p => p.totalPoints >= 200);
+    
+    let gameComplete = false;
+    let winners = [];
+    
+    if (playersAt200Plus.length > 0) {
+        // Find all players with the highest score among those with 200+
+        const topScore = playersAt200Plus[0].totalPoints;
+        const topScorers = playersAt200Plus.filter(p => p.totalPoints === topScore);
+        
+        if (topScorers.length === 1) {
+            // Single winner with highest score over 200
+            gameComplete = true;
+            winners = topScorers;
+        } else {
+            // Tie at the top - continue playing until tie is broken
+            gameComplete = false;
+        }
+    }
+    
+    // Calculate who will start the next round (if game continues)
+    let nextRoundStarter = null;
+    let nextStarterName = null;
+    if (!gameComplete) {
+        const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
+        const currentStarterIndex = playerNumbers.indexOf(gameState.roundStartPlayer);
+        const nextStarterIndex = (currentStarterIndex + 1) % playerNumbers.length;
+        nextRoundStarter = playerNumbers[nextStarterIndex];
+        nextStarterName = gameState.players[nextRoundStarter]?.name || `Player ${nextRoundStarter}`;
+    }
+    
+    const roundResults = {
         roundNumber: gameState.roundNumber,
         results: Object.keys(gameState.players).map(pNum => ({
             playerNumber: pNum,
@@ -169,13 +199,42 @@ function endRound() {
             totalPoints: gameState.players[pNum].points,
             status: gameState.players[pNum].status
         })),
-        nextRoundStarter: {
+        gameComplete: gameComplete,
+        winners: winners.map(w => ({
+            playerNumber: w.number,
+            playerName: w.name,
+            totalPoints: w.totalPoints
+        }))
+    };
+    
+    if (!gameComplete && nextRoundStarter) {
+        roundResults.nextRoundStarter = {
             playerNumber: nextRoundStarter,
             playerName: nextStarterName
-        }
-    });
+        };
+    }
     
-    gameState.roundNumber++;
+    io.to('game').emit('round-ended', roundResults);
+    
+    if (gameComplete) {
+        gameState.gameStarted = false;
+        gameState.roundInProgress = false;
+        io.to('game').emit('game-completed', {
+            winners: winners.map(w => ({
+                playerNumber: w.number,
+                playerName: w.name,
+                totalPoints: w.totalPoints
+            })),
+            finalScores: playersWithScores.map(p => ({
+                playerNumber: p.number,
+                playerName: p.name,
+                totalPoints: p.totalPoints
+            }))
+        });
+        console.log(`Game completed! Winner(s):`, winners.map(w => w.name).join(', '));
+    } else {
+        gameState.roundNumber++;
+    }
 }
 
 // Socket.IO connection handling

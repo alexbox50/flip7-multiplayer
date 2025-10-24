@@ -38,6 +38,7 @@ class Flip7Game {
         this.totalValue = document.getElementById('total-value');
         this.currentTurn = document.getElementById('current-turn');
         this.gameMessage = document.getElementById('game-message');
+        this.leaderInfo = document.getElementById('leader-info');
 
         // Admin panel elements
         this.adminPassword = document.getElementById('admin-password');
@@ -130,6 +131,7 @@ class Flip7Game {
         this.socket.on('game-restarted', () => {
             this.showMessage('Game restarted by admin', 'info');
             this.startGameBtn.style.display = 'inline-block';
+            this.startGameBtn.textContent = 'Start Game';
             this.startRoundBtn.style.display = 'none';
         });
 
@@ -157,14 +159,66 @@ class Flip7Game {
 
         this.socket.on('round-ended', (data) => {
             let message = `Round ${data.roundNumber - 1} Results:\n`;
-            data.results.forEach(result => {
-                message += `${result.playerName}: ${result.roundPoints} points (${result.status})\n`;
+            
+            // Sort results by total points for display
+            const sortedResults = [...data.results].sort((a, b) => b.totalPoints - a.totalPoints);
+            
+            sortedResults.forEach(result => {
+                message += `${result.playerName}: +${result.roundPoints} pts (Total: ${result.totalPoints}) [${result.status}]\n`;
             });
-            if (data.nextRoundStarter) {
-                message += `\nNext round will start with: ${data.nextRoundStarter.playerName} (#${data.nextRoundStarter.playerNumber})`;
+            
+            if (data.gameComplete) {
+                message += `\n🎉 GAME COMPLETE! 🎉\n`;
+                data.winners.forEach(winner => {
+                    message += `Winner: ${winner.playerName} with ${winner.totalPoints} points!\n`;
+                });
+                this.startRoundBtn.style.display = 'none';
+                this.startGameBtn.style.display = 'inline-block';
+                this.startGameBtn.textContent = 'Start New Game';
+            } else {
+                const playersAt200Plus = sortedResults.filter(r => r.totalPoints >= 200);
+                if (playersAt200Plus.length > 0) {
+                    const topScore = playersAt200Plus[0].totalPoints;
+                    const leaders = playersAt200Plus.filter(r => r.totalPoints === topScore);
+                    if (leaders.length > 1) {
+                        message += `\n🔥 TIE at ${topScore} points! Continue playing to break the tie.\n`;
+                    }
+                }
+                
+                if (data.nextRoundStarter) {
+                    message += `\nNext round starts with: ${data.nextRoundStarter.playerName} (#${data.nextRoundStarter.playerNumber})`;
+                }
+                this.startRoundBtn.style.display = 'inline-block';
             }
-            this.showMessage(message, 'info');
-            this.startRoundBtn.style.display = 'inline-block';
+            
+            this.showMessage(message, data.gameComplete ? 'success' : 'info');
+        });
+
+        this.socket.on('game-completed', (data) => {
+            let message = '🏆 FINAL RESULTS 🏆\n\n';
+            data.winners.forEach(winner => {
+                message += `🥇 ${winner.playerName}: ${winner.totalPoints} points\n`;
+            });
+            message += '\nFinal Standings:\n';
+            data.finalScores.forEach((player, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                message += `${medal} ${player.playerName}: ${player.totalPoints} points\n`;
+            });
+            
+            this.showMessage(message, 'success');
+            
+            // Highlight winners in the player list
+            setTimeout(() => {
+                data.winners.forEach(winner => {
+                    const playerItems = Array.from(this.playersList.children);
+                    playerItems.forEach(item => {
+                        const playerNumber = item.querySelector('.player-number').textContent;
+                        if (parseInt(playerNumber) === winner.playerNumber) {
+                            item.classList.add('game-winner');
+                        }
+                    });
+                });
+            }, 100);
         });
 
         this.socket.on('player-disconnected', (data) => {
@@ -202,6 +256,7 @@ class Flip7Game {
             this.gameState = null;
             this.updateGameDisplay();
             this.startGameBtn.style.display = 'inline-block';
+            this.startGameBtn.textContent = 'Start Game';
             this.startRoundBtn.style.display = 'none';
         });
     }
@@ -319,12 +374,13 @@ class Flip7Game {
             this.currentRound.textContent = '1';
             this.uniqueCount.textContent = '0';
             this.totalValue.textContent = '0';
+            this.leaderInfo.textContent = 'No leader yet';
             this.drawBtn.disabled = true;
             this.stickBtn.disabled = true;
             return;
         }
 
-        this.updatePlayersList();
+        this.updatePlayersList(); // This now includes leader info update
         this.updateDeckInfo();
         this.updatePlayerHand();
         this.updateTurnIndicator();
@@ -334,10 +390,21 @@ class Flip7Game {
     updatePlayersList() {
         this.playersList.innerHTML = '';
         
+        // Sort by total points (descending), then by player number
         const sortedPlayers = Object.entries(this.gameState.players)
-            .sort(([a], [b]) => parseInt(a) - parseInt(b));
+            .sort(([a, playerA], [b, playerB]) => {
+                const pointsA = playerA.points || 0;
+                const pointsB = playerB.points || 0;
+                if (pointsA !== pointsB) {
+                    return pointsB - pointsA; // Descending by points
+                }
+                return parseInt(a) - parseInt(b); // Ascending by player number
+            });
 
-        sortedPlayers.forEach(([playerNumber, player]) => {
+        const highestScore = sortedPlayers.length > 0 ? (sortedPlayers[0][1].points || 0) : 0;
+        const playersAt200Plus = sortedPlayers.filter(([, player]) => (player.points || 0) >= 200);
+
+        sortedPlayers.forEach(([playerNumber, player], index) => {
             const playerItem = document.createElement('div');
             playerItem.className = 'player-item';
             
@@ -349,18 +416,54 @@ class Flip7Game {
                 playerItem.classList.add('disconnected');
             }
 
+            // Highlight leaders and players at target
+            const playerPoints = player.points || 0;
+            if (playerPoints === highestScore && highestScore > 0) {
+                playerItem.classList.add('leader');
+            }
+            if (playerPoints >= 200) {
+                playerItem.classList.add('at-target');
+            }
+
             const statusClass = `status-${player.status || 'waiting'}`;
             
             playerItem.innerHTML = `
                 <span class="player-number">${playerNumber}</span>
                 <span class="player-name">${player.name}</span>
                 <span class="card-count">${player.cards.length}</span>
-                <span class="player-points">${player.points || 0}pts</span>
+                <span class="player-points">${playerPoints}pts</span>
                 <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
             `;
 
             this.playersList.appendChild(playerItem);
         });
+
+        // Update leader info
+        this.updateLeaderInfo(sortedPlayers, playersAt200Plus);
+    }
+
+    updateLeaderInfo(sortedPlayers, playersAt200Plus) {
+        if (sortedPlayers.length === 0) {
+            this.leaderInfo.textContent = 'No players';
+            return;
+        }
+
+        const leader = sortedPlayers[0][1];
+        const leaderPoints = leader.points || 0;
+        
+        if (playersAt200Plus.length > 0) {
+            const topScore = playersAt200Plus[0][1].points || 0;
+            const winners = playersAt200Plus.filter(([, p]) => (p.points || 0) === topScore);
+            
+            if (winners.length === 1) {
+                this.leaderInfo.innerHTML = `🏆 ${winners[0][1].name}: ${topScore} pts<br><small>Game should end!</small>`;
+            } else {
+                this.leaderInfo.innerHTML = `🔥 ${winners.length}-way tie at ${topScore} pts<br><small>Continue until tie broken</small>`;
+            }
+        } else {
+            const pointsNeeded = 200 - leaderPoints;
+            this.leaderInfo.innerHTML = `👑 ${leader.name}: ${leaderPoints} pts<br><small>${pointsNeeded} to target</small>`;
+        }
     }
 
     updateDeckInfo() {
