@@ -153,18 +153,20 @@ class Flip7Game {
         });
 
         this.socket.on('card-drawn', (data) => {
-            // Trigger card animation before updating display
+            // Update display first to ensure deck has visual cards
+            this.updateGameDisplay();
+            
+            // Then trigger card animation for the current player
             if (data.playerNumber === this.playerNumber) {
-                this.animateCardToHand();
+                console.log('Card drawn by current player, triggering animation');
+                // Add small delay to ensure DOM is updated
+                setTimeout(() => {
+                    this.animateCardToHand();
+                }, 100);
                 this.showMessage(`You drew: ${data.card.value}`, 'info');
             } else {
                 this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
             }
-            
-            // Update display after a short delay to let animation start
-            setTimeout(() => {
-                this.updateGameDisplay();
-            }, 50);
         });
 
         this.socket.on('player-stuck', (data) => {
@@ -575,6 +577,8 @@ class Flip7Game {
         const cardsRemaining = this.gameState.deck ? this.gameState.deck.length : 0;
         const discardCount = this.gameState.discardPile ? this.gameState.discardPile.length : 0;
         
+        console.log(`Updating deck info: ${cardsRemaining} cards remaining, ${discardCount} discarded`);
+        
         // Update text counters
         this.cardsLeft.textContent = cardsRemaining;
         
@@ -602,10 +606,13 @@ class Flip7Game {
     }
 
     updateDeckStack(cardCount) {
+        console.log(`Updating deck stack with ${cardCount} cards`);
+        
         // Clear existing stack
         this.deckStack.innerHTML = '';
         
         if (cardCount === 0) {
+            console.log('Deck is empty, showing empty message');
             // Show empty deck message
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-deck';
@@ -629,12 +636,14 @@ class Flip7Game {
         const cardThickness = Math.min(3, maxHeight / Math.max(visualCardCount, 1));
         
         // Create visual cards
+        console.log(`Creating ${visualCardCount} visual cards for deck stack`);
         for (let i = 0; i < visualCardCount; i++) {
             const cardElement = document.createElement('div');
             cardElement.className = 'deck-stack-card';
             
             this.deckStack.appendChild(cardElement);
         }
+        console.log(`Deck stack now has ${this.deckStack.children.length} visual elements`);
         
         // Add indicator if there are more cards than visual representation
         if (cardCount > maxVisualCards) {
@@ -721,11 +730,21 @@ class Flip7Game {
 
     // Animation function for card flying from deck to hand
     animateCardToHand() {
-        // Get the top card from the deck
-        const topCard = this.deckStack.querySelector('.deck-stack-card:last-child');
-        if (!topCard) {
-            console.log('No top card found for animation');
+        // First ensure deck has visual cards
+        if (!this.deckStack) {
+            console.log('Deck stack element not found');
             return;
+        }
+
+        // Check if deck has any cards to animate from
+        let topCard = this.deckStack.querySelector('.deck-stack-card:last-child');
+        
+        if (!topCard) {
+            // If no cards visible, create a temporary one for animation
+            console.log('No visual cards in deck, creating temporary card for animation');
+            topCard = document.createElement('div');
+            topCard.className = 'deck-stack-card';
+            this.deckStack.appendChild(topCard);
         }
 
         // Clone the card for animation
