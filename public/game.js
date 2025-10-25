@@ -111,7 +111,6 @@ class Flip7Game {
 
         this.socket.on('game-state', (gameState) => {
             this.gameState = gameState;
-            console.log('game-state event received, animatingCard:', this.animatingCard);
             // If we're animating, only update hands but preserve current player highlighting
             if (this.animatingCard) {
                 this.updatePlayersListOnly();
@@ -193,8 +192,6 @@ class Flip7Game {
             
             // Store the card data for animation (for any player)
             // The drawing player should remain highlighted during their animation
-            console.log('Setting up animation - data.playerNumber:', data.playerNumber);
-            console.log('Setting up animation - gameState.currentPlayer before:', this.gameState.currentPlayer);
             this.animatingCard = {
                 playerNumber: data.playerNumber,
                 card: data.card,
@@ -202,7 +199,6 @@ class Flip7Game {
                 isFlip7: data.isFlip7 || false, // Track if this is the 7th card
                 preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
             };
-            console.log('Created animatingCard:', this.animatingCard);
             
             // Update hands only, preserving current player highlighting during animation
             this.updatePlayersListOnly();
@@ -251,9 +247,7 @@ class Flip7Game {
                     this.animateCardToHandWithFlip(data.playerNumber, data.drawnCard, () => {
                         console.log(`Bust card animation completed for player ${data.playerNumber}`);
                         // Clear the animating card flag and do full update including current player highlighting
-                        this.animatingCard = null;
-                        this.updatePlayersListOnly();
-                        this.updatePlayerListAfterAnimation(); // Update current player highlighting after animation
+                        this.updatePlayerListAfterAnimation();
                         
                         // Then after a short delay, trigger the discard animation and update again
                         setTimeout(() => {
@@ -303,9 +297,7 @@ class Flip7Game {
                     this.animateCardToHandWithFlip(data.playerNumber, seventhCard, () => {
                         console.log(`Flip 7 card animation completed for player ${data.playerNumber}`);
                         // Clear the animating card flag and do full update including current player highlighting
-                        this.animatingCard = null;
-                        this.updatePlayersListOnly();
-                        this.updatePlayerListAfterAnimation(); // Update current player highlighting after animation
+                        this.updatePlayerListAfterAnimation();
                         
                         // Add celebration effect after card appears
                         this.triggerFlip7Celebration(data);
@@ -578,6 +570,12 @@ class Flip7Game {
         };
     }
 
+    updatePlayerListAfterAnimation() {
+        // Clear the animation state and update current player highlighting to actual game state
+        this.animatingCard = null;
+        this.updateGameDisplay();
+    }
+
     updatePlayersListOnly() {
         // Update only the player hands without changing current player highlighting
         // This preserves the current turn visual state during animations
@@ -624,10 +622,6 @@ class Flip7Game {
 
         // Determine which player should be highlighted as current
         const currentPlayerToHighlight = this.animatingCard?.preserveCurrentPlayer ?? this.gameState.currentPlayer;
-        console.log('updatePlayersListOnly - animatingCard:', this.animatingCard);
-        console.log('updatePlayersListOnly - preserveCurrentPlayer:', this.animatingCard?.preserveCurrentPlayer);
-        console.log('updatePlayersListOnly - gameState.currentPlayer:', this.gameState.currentPlayer);
-        console.log('updatePlayersListOnly - currentPlayerToHighlight:', currentPlayerToHighlight);
 
         // Update each existing row without changing current-turn highlighting during animation
         playersByNumber.forEach(([playerNumber, player]) => {
@@ -752,11 +746,8 @@ class Flip7Game {
                 playerRow.classList.add('disconnected');
             }
 
-            // Highlight leaders and players at target
+            // Highlight players at target only
             const playerPoints = player.points || 0;
-            if (playerPoints === highestScore && highestScore > 0) {
-                playerRow.classList.add('leader');
-            }
             if (playerPoints >= 200) {
                 playerRow.classList.add('at-target');
             }
