@@ -702,10 +702,28 @@ class Flip7Game {
         if (this.uniqueCount) this.uniqueCount.textContent = uniqueValues.size;
         if (this.totalValue) this.totalValue.textContent = totalValue;
 
+        // Count occurrences of each value to identify duplicates
+        const valueCounts = {};
+        playerCards.forEach(card => {
+            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+        });
+
         playerCards.forEach((card, index) => {
             const cardElement = document.createElement('div');
             cardElement.innerHTML = this.renderCard(card);
-            this.handCards.appendChild(cardElement.firstChild);
+            const actualCard = cardElement.firstChild;
+            
+            // Mark duplicates with special styling
+            if (valueCounts[card.value] > 1) {
+                actualCard.classList.add('duplicate-card');
+                actualCard.title = `Duplicate value ${card.value} (${valueCounts[card.value]} cards)`;
+            }
+            
+            // Add animation delay for newly drawn cards
+            actualCard.style.animationDelay = `${index * 0.1}s`;
+            actualCard.classList.add('card-appear');
+            
+            this.handCards.appendChild(actualCard);
         });
     }
 
@@ -750,11 +768,42 @@ class Flip7Game {
     }
 
     renderCard(card) {
+        // Generate a consistent color based on card value
+        const colorClass = this.getCardColorClass(card.value);
+        const suitSymbol = this.getCardSuit(card.value);
+        
         return `
-            <div class="card">
-                <span class="card-center">${card.value}</span>
+            <div class="card ${colorClass}" data-value="${card.value}">
+                <div class="card-corner card-corner-top">
+                    <div class="card-rank">${card.value}</div>
+                    <div class="card-suit">${suitSymbol}</div>
+                </div>
+                <div class="card-center">
+                    <div class="card-value-large">${card.value}</div>
+                    <div class="card-suit-large">${suitSymbol}</div>
+                </div>
+                <div class="card-corner card-corner-bottom">
+                    <div class="card-rank">${card.value}</div>
+                    <div class="card-suit">${suitSymbol}</div>
+                </div>
             </div>
         `;
+    }
+
+    getCardColorClass(value) {
+        // Alternate colors for visual variety while maintaining game logic
+        if (value <= 3) return 'red-card';
+        if (value <= 6) return 'black-card';
+        if (value <= 9) return 'red-card';
+        return 'black-card';
+    }
+
+    getCardSuit(value) {
+        // Assign suit symbols based on value for visual variety
+        if (value <= 3) return '♥'; // Hearts (red)
+        if (value <= 6) return '♠'; // Spades (black)
+        if (value <= 9) return '♦'; // Diamonds (red)
+        return '♣'; // Clubs (black)
     }
 
     showConnectionScreen() {
