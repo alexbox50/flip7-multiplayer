@@ -633,6 +633,11 @@ body {
     pointer-events: none;
 }
 
+.card-flying-to-hand-flip {
+    pointer-events: none;
+    transform-style: preserve-3d;
+}
+
 .card-flying-to-discard {
     animation: cardToDiscard 1s ease-in-out forwards;
     pointer-events: none;

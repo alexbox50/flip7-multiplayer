@@ -5,6 +5,7 @@ class Flip7Game {
         this.playerName = null;
         this.gameState = null;
         this.isMyTurn = false;
+        this.animatingCard = null; // Track cards currently being animated
         
         this.initializeElements();
         this.setupEventListeners();
@@ -153,18 +154,54 @@ class Flip7Game {
         });
 
         this.socket.on('card-drawn', (data) => {
-            // Update display first to ensure deck has visual cards
-            this.updateGameDisplay();
+            console.log('===== CARD-DRAWN EVENT =====');
+            console.log('Card drawn event received:', data);
+            console.log('Current player number:', this.playerNumber);
+            console.log('Drawing player number:', data.playerNumber);
+            console.log('Is my turn?', data.playerNumber === this.playerNumber);
             
-            // Then trigger card animation for the current player
+            // For the drawing player, animate first then update display
             if (data.playerNumber === this.playerNumber) {
                 console.log('Card drawn by current player, triggering animation');
-                // Add small delay to ensure DOM is updated
-                setTimeout(() => {
-                    this.animateCardToHand();
-                }, 100);
+                console.log('Card drawn data:', data);
                 this.showMessage(`You drew: ${data.card.value}`, 'info');
+                
+                // Check if we're already animating (to prevent conflicts with flip-seven event)
+                if (this.animatingCard) {
+                    console.log('Already animating a card, skipping this animation');
+                    this.updateGameDisplay();
+                    return;
+                }
+                
+                // Store the card data for animation (even if it might be a bust)
+                this.animatingCard = {
+                    playerNumber: data.playerNumber,
+                    card: data.card,
+                    isBustCard: data.isBust || false, // Track if this might be a bust card
+                    isFlip7: data.isFlip7 || false // Track if this is the 7th card
+                };
+                
+                // Update display first (without the animating card)
+                this.updateGameDisplay();
+                
+                // Add a small delay to ensure DOM is fully updated before measuring positions
+                setTimeout(() => {
+                    console.log('Starting animation after DOM update delay');
+                    this.animateCardToHandWithFlip(data.playerNumber, data.card, () => {
+                        console.log('Animation completed, showing card');
+                        // Clear the animating card flag and update display to show all cards
+                        this.animatingCard = null;
+                        this.updateGameDisplay();
+                        
+                        // If this was a flip 7 card, we might need to trigger celebration
+                        if (data.isFlip7) {
+                            console.log('This was a flip 7 card, celebration should follow');
+                        }
+                    });
+                }, 50);
             } else {
+                // For other players, update display to show deck changes but no animation
+                this.updateGameDisplay();
                 this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
             }
         });
@@ -174,17 +211,93 @@ class Flip7Game {
         });
 
         this.socket.on('player-bust', (data) => {
+            console.log('Player bust event received:', data);
+            
+            // If it's the current player who went bust, trigger animation for the bust card
+            if (data.playerNumber === this.playerNumber) {
+                console.log('Current player went bust, triggering bust card animation');
+                
+                // Set up animation for the bust card
+                this.animatingCard = {
+                    playerNumber: data.playerNumber,
+                    card: data.drawnCard
+                };
+                
+                // Update display without the bust card first
+                this.updateGameDisplay();
+                
+                // Animate the bust card, then show it briefly before it gets discarded
+                setTimeout(() => {
+                    this.animateCardToHandWithFlip(data.playerNumber, data.drawnCard, () => {
+                        console.log('Bust card animation completed');
+                        // Clear the animating card flag and update to show the bust card briefly
+                        this.animatingCard = null;
+                        this.updateGameDisplay();
+                        
+                        // Then after a short delay, trigger the discard animation and update again
+                        setTimeout(() => {
+                            // The bust card should be discarded, so update display again
+                            this.updateGameDisplay();
+                        }, 1000);
+                    });
+                }, 50);
+            }
+            
             this.showMessage(`${data.playerName} went BUST! Drew duplicate value ${data.drawnCard.value}`, 'error');
         });
 
         this.socket.on('flip-seven', (data) => {
+            console.log('===== FLIP-SEVEN EVENT =====');
+            console.log('Flip 7 event received:', data);
+            console.log('Current player number:', this.playerNumber);
+            console.log('Flip 7 player number:', data.playerNumber);
+            console.log('Is my flip 7?', data.playerNumber === this.playerNumber);
+            console.log('Has drawnCard data?', !!data.drawnCard);
+            
+            // If it's the current player who got Flip 7, try to animate the 7th card
+            if (data.playerNumber === this.playerNumber) {
+                console.log('Current player got Flip 7, attempting animation');
+                
+                // Get the player's cards to find the 7th card (most recent)
+                const player = this.gameState.players[data.playerNumber];
+                if (player && player.cards && player.cards.length >= 7) {
+                    const seventhCard = player.cards[player.cards.length - 1]; // Last card should be the 7th
+                    console.log('Found 7th card for animation:', seventhCard);
+                    
+                    // Set up animation for the 7th card
+                    this.animatingCard = {
+                        playerNumber: data.playerNumber,
+                        card: seventhCard,
+                        isFlip7Card: true
+                    };
+                    
+                    // Update display without the 7th card first
+                    this.updateGameDisplay();
+                    
+                    // Animate the 7th card
+                    setTimeout(() => {
+                        this.animateCardToHandWithFlip(data.playerNumber, seventhCard, () => {
+                            console.log('Flip 7 card animation completed');
+                            // Clear the animating card flag and update to show the 7th card
+                            this.animatingCard = null;
+                            this.updateGameDisplay();
+                            
+                            // Add celebration effect after card appears
+                            this.triggerFlip7Celebration(data);
+                        });
+                    }, 50);
+                } else {
+                    console.log('Could not find 7th card for animation, using fallback');
+                    this.updateGameDisplay();
+                    this.triggerFlip7Celebration(data);
+                }
+            } else {
+                // For other players, just update display
+                this.updateGameDisplay();
+                this.triggerFlip7Celebration(data);
+            }
+            
             this.showMessage(`🎉 ${data.playerName} hit FLIP 7! ${data.handValue} + 15 bonus = ${data.totalPoints} points!`, 'success');
-            
-            // Force update game display to show the 7th card
-            this.updateGameDisplay();
-            
-            // Add celebration effect
-            this.triggerFlip7Celebration(data);
         });
 
         this.socket.on('round-ended', (data) => {
@@ -516,7 +629,7 @@ class Flip7Game {
             const rankDisplay = getRankingDisplay(playerRank, playersByNumber.length);
             
             // Generate hand cards HTML and calculate stats
-            const handCardsHTML = this.generatePlayerHandHTML(player.cards || []);
+            const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
             const handStats = this.calculateHandStats(player.cards || []);
             
             playerRow.innerHTML = `
@@ -728,8 +841,162 @@ class Flip7Game {
         }
     }
 
+    // Enhanced animation function for card flying from deck to hand with flip
+    animateCardToHandWithFlip(targetPlayerNumber, drawnCard, onComplete) {
+        if (!this.deckStack) {
+            console.log('Deck stack element not found');
+            onComplete();
+            return;
+        }
+
+        // Check if deck has any cards to animate from
+        let topCard = this.deckStack.querySelector('.deck-stack-card:last-child');
+        if (!topCard) {
+            console.log('No visual cards in deck, creating temporary card for animation');
+            topCard = document.createElement('div');
+            topCard.className = 'deck-stack-card';
+            this.deckStack.appendChild(topCard);
+        }
+
+        // Find the target player's hand display to get the exact landing position
+        let targetHandDisplay = null;
+        const allRows = document.querySelectorAll('#players-table tr.player-row');
+        for (const row of allRows) {
+            const playerNumElement = row.querySelector('.player-number');
+            if (playerNumElement && playerNumElement.textContent.trim() === targetPlayerNumber.toString()) {
+                targetHandDisplay = row.querySelector('.player-hand-display');
+                break;
+            }
+        }
+
+        if (!targetHandDisplay) {
+            console.log(`No hand display found for player ${targetPlayerNumber}`);
+            onComplete();
+            return;
+        }
+
+        // Calculate where the new card will appear in the hand (at the end)
+        const handRect = targetHandDisplay.getBoundingClientRect();
+        
+        // Get currently visible cards (filtered, without the animating card)
+        const visibleCards = targetHandDisplay.querySelectorAll('.mini-card');
+        
+        let targetX, targetY;
+        
+        if (visibleCards.length === 0) {
+            // First card: position at the start of the hand area
+            targetX = handRect.left + 40; // cardWidth/2
+            targetY = handRect.top + 56; // cardHeight/2
+        } else {
+            // Debug: Let's see what cards are currently visible
+            const currentVisibleCards = targetHandDisplay.querySelectorAll('.mini-card');
+            console.log(`Before calculation: ${currentVisibleCards.length} visible cards`);
+            currentVisibleCards.forEach((card, i) => {
+                const rect = card.getBoundingClientRect();
+                console.log(`Card ${i}: left=${rect.left}, right=${rect.right}, top=${rect.top}`);
+            });
+            
+            // Get the player's current card count from game state
+            const player = this.gameState.players[targetPlayerNumber];
+            const totalCards = player ? player.cards.length : 0;
+            console.log(`Player ${targetPlayerNumber} has ${totalCards} total cards in game state`);
+            console.log(`Cards in game state:`, player ? player.cards.map(c => c.value) : 'no player data');
+            
+            // Simple approach: position next to the rightmost visible card
+            if (currentVisibleCards.length > 0) {
+                const lastVisibleCard = currentVisibleCards[currentVisibleCards.length - 1];
+                const lastRect = lastVisibleCard.getBoundingClientRect();
+                
+                // Position directly to the right with the same spacing as between existing cards
+                let spacing = 82; // default card width + gap
+                if (currentVisibleCards.length >= 2) {
+                    const secondLastCard = currentVisibleCards[currentVisibleCards.length - 2];
+                    const secondLastRect = secondLastCard.getBoundingClientRect();
+                    spacing = lastRect.left - secondLastRect.left; // actual spacing between cards
+                    console.log(`Measured spacing between cards: ${spacing}px`);
+                }
+                
+                targetX = lastRect.left + spacing;
+                targetY = lastRect.top + (lastRect.height / 2);
+                
+                console.log(`Positioning next to last visible card: targetX=${targetX}, targetY=${targetY}`);
+            } else {
+                // First card position
+                targetX = handRect.left + 40;
+                targetY = handRect.top + 56;
+                console.log(`First card position: targetX=${targetX}, targetY=${targetY}`);
+            }
+        }
+        
+        console.log(`Card position calculation: visibleCards=${visibleCards.length}, target=(${targetX}, ${targetY})`)
+
+        // Clone the card for animation
+        const flyingCard = topCard.cloneNode(true);
+        flyingCard.classList.remove('deck-stack-card');
+        flyingCard.classList.add('card-flying-to-hand-flip');
+        
+        // Get deck position for starting point
+        const deckRect = this.deckStack.getBoundingClientRect();
+        const startX = deckRect.left + deckRect.width / 2;
+        const startY = deckRect.top + deckRect.height / 2;
+        
+        // Set initial position and styling
+        flyingCard.style.cssText = `
+            position: fixed;
+            left: ${startX - 40}px;
+            top: ${startY - 56}px;
+            width: 80px;
+            height: 112px;
+            z-index: 2000;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            border: 2px solid #333;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            transform: rotateY(0deg);
+            transition: all 0.8s ease-in-out;
+        `;
+
+        // Start with card back
+        flyingCard.innerHTML = '<span style="font-size: 2rem;">🂠</span>';
+        document.body.appendChild(flyingCard);
+
+        // Animate to target position with flip
+        setTimeout(() => {
+            flyingCard.style.left = `${targetX - 40}px`;
+            flyingCard.style.top = `${targetY - 56}px`;
+            flyingCard.style.transform = `rotateY(180deg)`;
+        }, 50);
+
+        // Flip to show card face at midpoint
+        setTimeout(() => {
+            const colorClass = this.getCardColorClass(drawnCard.value);
+            const suitSymbol = this.getCardSuit(drawnCard.value);
+            flyingCard.style.background = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
+            flyingCard.style.color = colorClass === 'red-card' ? '#e74c3c' : '#2c3e50';
+            flyingCard.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="font-size: 1.25rem; line-height: 1;">${drawnCard.value}</div>
+                    <div style="font-size: 1rem; line-height: 1;">${suitSymbol}</div>
+                </div>
+            `;
+        }, 400);
+
+        // Complete animation and update display
+        setTimeout(() => {
+            flyingCard.remove();
+            onComplete();
+        }, 800);
+
+        console.log(`Card animation: deck at (${startX}, ${startY}) → hand at (${targetX}, ${targetY})`);
+    }
+
     // Animation function for card flying from deck to hand
-    animateCardToHand() {
+    animateCardToHand(targetPlayerNumber = null) {
         // First ensure deck has visual cards
         if (!this.deckStack) {
             console.log('Deck stack element not found');
@@ -755,8 +1022,24 @@ class Flip7Game {
         // Get deck position for starting point
         const deckRect = this.deckStack.getBoundingClientRect();
         
-        // Get target position (player's hand column in the table)
-        const playerRow = document.querySelector(`#players-table tr.current-turn .hand-cell`);
+        // Get target position (specific player's hand column in the table)
+        let playerRow = null;
+        
+        if (targetPlayerNumber) {
+            // Find the specific player's row by looking for their player number
+            const allRows = document.querySelectorAll('#players-table tr.player-row');
+            for (const row of allRows) {
+                const playerNumElement = row.querySelector('.player-number');
+                if (playerNumElement && playerNumElement.textContent.trim() === targetPlayerNumber.toString()) {
+                    playerRow = row.querySelector('.hand-cell');
+                    break;
+                }
+            }
+        } else {
+            // Fallback to current-turn player
+            playerRow = document.querySelector(`#players-table tr.current-turn .hand-cell`);
+        }
+        
         let targetX = window.innerWidth * 0.8; // fallback position
         let targetY = window.innerHeight * 0.3;
         
@@ -764,9 +1047,9 @@ class Flip7Game {
             const handRect = playerRow.getBoundingClientRect();
             targetX = handRect.left + handRect.width / 2;
             targetY = handRect.top + handRect.height / 2;
-            console.log(`Animation target: hand cell at (${targetX}, ${targetY})`);
+            console.log(`Animation target: player ${targetPlayerNumber || 'current'} hand cell at (${targetX}, ${targetY})`);
         } else {
-            console.log('No current-turn player row found, using fallback position');
+            console.log(`No hand cell found for player ${targetPlayerNumber || 'current'}, using fallback position`);
         }
         
         // Calculate the trajectory
@@ -1084,18 +1367,30 @@ class Flip7Game {
         }
     }
 
-    generatePlayerHandHTML(cards) {
+    generatePlayerHandHTML(cards, playerNumber) {
         if (!cards || cards.length === 0) {
             return '<span class="no-cards">No cards</span>';
         }
 
+        // Filter out the animating card if this is the player who drew it
+        let filteredCards = cards;
+        if (this.animatingCard && 
+            this.animatingCard.playerNumber === parseInt(playerNumber) && 
+            cards.length > 0) {
+            // Remove the last card (most recently drawn) during animation
+            filteredCards = cards.slice(0, -1);
+            if (filteredCards.length === 0) {
+                return '<span class="no-cards">Drawing card...</span>';
+            }
+        }
+
         // Count occurrences of each value to identify duplicates
         const valueCounts = {};
-        cards.forEach(card => {
+        filteredCards.forEach(card => {
             valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
         });
 
-        return cards.map(card => {
+        return filteredCards.map(card => {
             const colorClass = this.getCardColorClass(card.value);
             const suitSymbol = this.getCardSuit(card.value);
             const isDuplicate = valueCounts[card.value] > 1;
