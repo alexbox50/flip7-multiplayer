@@ -481,7 +481,8 @@ class Flip7Game {
             this.playersList.appendChild(playerItem);
         });
 
-        // Update leader info
+        // Update leader info - convert playerRankings back to sortedPlayers format for compatibility
+        const sortedPlayers = playerRankings.map(p => [p.playerNumber, this.gameState.players[p.playerNumber]]);
         this.updateLeaderInfo(sortedPlayers, playersAt200Plus);
     }
 
@@ -495,11 +496,12 @@ class Flip7Game {
         const leaderPoints = leader.points || 0;
         
         if (playersAt200Plus.length > 0) {
-            const topScore = playersAt200Plus[0][1].points || 0;
-            const winners = playersAt200Plus.filter(([, p]) => (p.points || 0) === topScore);
+            const topScore = playersAt200Plus[0].points;
+            const winners = playersAt200Plus.filter(p => p.points === topScore);
             
             if (winners.length === 1) {
-                this.leaderInfo.innerHTML = `🏆 ${winners[0][1].name}: ${topScore} pts<br><small>Game should end!</small>`;
+                const winnerPlayer = this.gameState.players[winners[0].playerNumber];
+                this.leaderInfo.innerHTML = `🏆 ${winnerPlayer.name}: ${topScore} pts<br><small>Game should end!</small>`;
             } else {
                 this.leaderInfo.innerHTML = `🔥 ${winners.length}-way tie at ${topScore} pts<br><small>Continue until tie broken</small>`;
             }
@@ -515,8 +517,14 @@ class Flip7Game {
         
         // Update text counters
         this.cardsLeft.textContent = cardsRemaining;
-        this.deckCount.textContent = `${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}`;
-        this.discardCount.textContent = `${discardCount} card${discardCount !== 1 ? 's' : ''}`;
+        
+        if (this.deckCount) {
+            this.deckCount.textContent = `${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}`;
+        }
+        
+        if (this.discardCount) {
+            this.discardCount.textContent = `${discardCount} card${discardCount !== 1 ? 's' : ''}`;
+        }
         
         // Update round number
         if (this.gameState.roundNumber) {
@@ -524,8 +532,13 @@ class Flip7Game {
         }
         
         // Create visual card stacks
-        this.updateDeckStack(cardsRemaining);
-        this.updateDiscardStack(discardCount);
+        if (this.deckStack) {
+            this.updateDeckStack(cardsRemaining);
+        }
+        
+        if (this.discardStack) {
+            this.updateDiscardStack(discardCount);
+        }
     }
 
     updateDeckStack(cardCount) {
@@ -669,12 +682,14 @@ class Flip7Game {
     }
 
     updatePlayerHand() {
-        this.handCards.innerHTML = '';
+        if (this.handCards) {
+            this.handCards.innerHTML = '';
+        }
         
         if (!this.gameState.players[this.playerNumber]) {
             // No player data - reset displays
-            this.uniqueCount.textContent = '0';
-            this.totalValue.textContent = '0';
+            if (this.uniqueCount) this.uniqueCount.textContent = '0';
+            if (this.totalValue) this.totalValue.textContent = '0';
             return;
         }
         
@@ -684,8 +699,8 @@ class Flip7Game {
         const uniqueValues = new Set(playerCards.map(card => card.value));
         const totalValue = playerCards.reduce((sum, card) => sum + card.value, 0);
         
-        this.uniqueCount.textContent = uniqueValues.size;
-        this.totalValue.textContent = totalValue;
+        if (this.uniqueCount) this.uniqueCount.textContent = uniqueValues.size;
+        if (this.totalValue) this.totalValue.textContent = totalValue;
 
         playerCards.forEach((card, index) => {
             const cardElement = document.createElement('div');
