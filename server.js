@@ -402,18 +402,27 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Freeze card
                 if (drawnCard.value === 'freeze') {
-                    // Remove freeze card from player's hand (it's not kept)
-                    player.cards.pop();
-                    
+                    // Keep freeze card in hand for display, but set freeze state
                     gameState.freezeCardActive = true;
                     gameState.freezeCardPlayer = playerNumber;
                     
-                    io.to('game').emit('freeze-card-drawn', {
+                    // First send regular card-drawn event for animation
+                    io.to('game').emit('card-drawn', {
                         playerNumber,
                         playerName: player.name,
                         card: drawnCard,
                         isFirstCard: true
                     });
+                    
+                    // Then send freeze-card-drawn event to trigger target selection UI
+                    setTimeout(() => {
+                        io.to('game').emit('freeze-card-drawn', {
+                            playerNumber,
+                            playerName: player.name,
+                            card: drawnCard,
+                            isFirstCard: true
+                        });
+                    }, 1000); // Delay to allow animation to complete
                     
                     // Don't advance turn yet - player needs to select target
                     io.to('game').emit('game-state', gameState);
@@ -438,18 +447,27 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Freeze card
                 if (drawnCard.value === 'freeze') {
-                    // Remove freeze card from player's hand (it's not kept)
-                    player.cards.pop();
-                    
+                    // Keep freeze card in hand for display, but set freeze state
                     gameState.freezeCardActive = true;
                     gameState.freezeCardPlayer = playerNumber;
                     
-                    io.to('game').emit('freeze-card-drawn', {
+                    // First send regular card-drawn event for animation
+                    io.to('game').emit('card-drawn', {
                         playerNumber,
                         playerName: player.name,
                         card: drawnCard,
                         isFirstCard: false
                     });
+                    
+                    // Then send freeze-card-drawn event to trigger target selection UI
+                    setTimeout(() => {
+                        io.to('game').emit('freeze-card-drawn', {
+                            playerNumber,
+                            playerName: player.name,
+                            card: drawnCard,
+                            isFirstCard: false
+                        });
+                    }, 1000); // Delay to allow animation to complete
                     
                     // Don't advance turn yet - player needs to select target
                     io.to('game').emit('game-state', gameState);
@@ -554,6 +572,13 @@ io.on('connection', (socket) => {
         if (!targetPlayer || targetPlayer.status !== 'playing') {
             socket.emit('invalid-move', { message: 'Invalid target player' });
             return;
+        }
+        
+        // Mark freeze card as used (but keep it in hand)
+        const freezePlayer = gameState.players[playerNumber];
+        const freezeCardIndex = freezePlayer.cards.findIndex(card => card.value === 'freeze' && !card.used);
+        if (freezeCardIndex !== -1) {
+            freezePlayer.cards[freezeCardIndex].used = true;
         }
         
         // Apply freeze effect - force target to stick

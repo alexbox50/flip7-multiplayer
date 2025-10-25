@@ -364,6 +364,14 @@ body {
     font-weight: bold;
 }
 
+.mini-card.used-freeze-card {
+    color: #87CEEB;
+    background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
+    border-color: #b0c4de;
+    opacity: 0.7;
+    font-weight: normal;
+}
+
 .mini-card.duplicate-card {
     border-color: #ff6b35;
     background: linear-gradient(145deg, #fff5f3 0%, #ffe8e1 100%);

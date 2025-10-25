@@ -426,7 +426,8 @@ class Flip7Game {
         });
 
         this.socket.on('freeze-card-drawn', (data) => {
-            this.showMessage(`${data.playerName} drew a Freeze card! 🧊 Selecting target...`, 'info');
+            // Show additional freeze card message
+            this.showMessage(`${data.playerName} drew a Freeze card! 🧊 Choose a target to freeze.`, 'info');
             
             // Show freeze target selection UI if it's this player's freeze card
             if (data.playerNumber === this.playerNumber) {
@@ -1516,11 +1517,26 @@ class Flip7Game {
             const suitSymbol = this.getCardSuit(card.value);
             const isDuplicate = valueCounts[card.value] > 1;
             const displayValue = card.value === 'freeze' ? '❄' : card.value;
-            const cardTitle = card.value === 'freeze' ? 'Freeze Card 🧊' : 
-                            (isDuplicate ? `Duplicate value ${card.value}` : `${card.value} ${suitSymbol}`);
+            
+            let cardTitle = '';
+            let additionalClasses = '';
+            
+            if (card.value === 'freeze') {
+                if (card.used) {
+                    cardTitle = 'Freeze Card 🧊 (Used)';
+                    additionalClasses = 'used-freeze-card';
+                } else {
+                    cardTitle = 'Freeze Card 🧊';
+                }
+            } else if (isDuplicate) {
+                cardTitle = `Duplicate value ${card.value}`;
+                additionalClasses = 'duplicate-card';
+            } else {
+                cardTitle = `${card.value} ${suitSymbol}`;
+            }
             
             return `
-                <div class="mini-card ${colorClass} ${isDuplicate ? 'duplicate-card' : ''}" 
+                <div class="mini-card ${colorClass} ${additionalClasses}" 
                      title="${cardTitle}">
                     <div class="mini-card-value">${displayValue}</div>
                     <div class="mini-card-suit">${suitSymbol}</div>
