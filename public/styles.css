@@ -357,6 +357,13 @@ body {
     color: #2c3e50;
 }
 
+.mini-card.freeze-card {
+    color: #4682B4;
+    background: linear-gradient(135deg, #E0F6FF, #B0E0E6);
+    border-color: #87CEEB;
+    font-weight: bold;
+}
+
 .mini-card.duplicate-card {
     border-color: #ff6b35;
     background: linear-gradient(145deg, #fff5f3 0%, #ffe8e1 100%);
@@ -1026,6 +1033,13 @@ body {
     color: #2c3e50;
 }
 
+.freeze-card {
+    color: #4682B4;
+    background: linear-gradient(135deg, #E0F6FF, #B0E0E6);
+    border: 2px solid #87CEEB;
+    font-weight: bold;
+}
+
 /* Suit colors */
 .hearts, .diamonds {
     color: #e74c3c;
@@ -1194,4 +1208,68 @@ body {
     background: rgba(33, 150, 243, 0.2);
     border: 1px solid #2196F3;
     color: #2196F3;
+}
+
+.message.warning {
+    background: rgba(255, 152, 0, 0.2);
+    border: 1px solid #FF9800;
+    color: #FF9800;
+}
+
+/* Freeze Card Selection Styles */
+.freeze-selection {
+    background: rgba(173, 216, 230, 0.1);
+    border: 2px solid #87CEEB;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.freeze-selection h4 {
+    color: #4682B4;
+    margin: 0 0 10px 0;
+    font-size: 1.1rem;
+}
+
+.freeze-selection p {
+    color: #555;
+    margin: 5px 0 15px 0;
+    font-size: 0.9rem;
+}
+
+.freeze-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #87CEEB;
+    border-radius: 5px;
+    background: white;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.freeze-select:focus {
+    outline: none;
+    border-color: #4682B4;
+    box-shadow: 0 0 5px rgba(70, 130, 180, 0.3);
+}
+
+.freeze-btn {
+    background: linear-gradient(135deg, #87CEEB, #4682B4);
+    color: white;
+    border: none;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.freeze-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, #4682B4, #2E5984);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(70, 130, 180, 0.3);
+}
+
+.freeze-btn:disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
 }

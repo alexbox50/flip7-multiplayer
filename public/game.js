@@ -37,6 +37,12 @@ class Flip7Game {
         this.drawBtn = document.getElementById('draw-btn');
         this.stickBtn = document.getElementById('stick-btn');
         this.turnStatus = document.getElementById('turn-status');
+        
+        // Freeze target selection elements
+        this.freezeTargetSelection = document.getElementById('freeze-target-selection');
+        this.freezeTargetSelect = document.getElementById('freeze-target-select');
+        this.freezeApplyBtn = document.getElementById('freeze-apply-btn');
+        
         // handCards element removed - cards now displayed in main players table
         // this.currentTurn element removed - turn indication now handled by table row highlighting
         // this.gameMessage element removed - game info now shown in table
@@ -61,6 +67,10 @@ class Flip7Game {
         this.leaveGameBtn.addEventListener('click', () => this.leaveGame());
         this.drawBtn.addEventListener('click', () => this.drawCard());
         this.stickBtn.addEventListener('click', () => this.stick());
+        
+        // Freeze target selection
+        this.freezeTargetSelect.addEventListener('change', () => this.updateFreezeApplyButton());
+        this.freezeApplyBtn.addEventListener('click', () => this.applyFreeze());
         
         // Admin controls
         this.restartGameBtn.addEventListener('click', () => this.restartGame());
@@ -414,6 +424,23 @@ class Flip7Game {
             this.startGameBtn.textContent = 'Start Game';
             this.startRoundBtn.style.display = 'none';
         });
+
+        this.socket.on('freeze-card-drawn', (data) => {
+            this.showMessage(`${data.playerName} drew a Freeze card! 🧊 Selecting target...`, 'info');
+            
+            // Show freeze target selection UI if it's this player's freeze card
+            if (data.playerNumber === this.playerNumber) {
+                this.showFreezeTargetSelection();
+            }
+        });
+
+        this.socket.on('freeze-effect-applied', (data) => {
+            this.showMessage(
+                `${data.freezePlayerName} used Freeze on ${data.targetPlayerName}! ${data.targetPlayerName} is forced to Stick with ${data.targetHandValue} points.`, 
+                'warning'
+            );
+            this.hideFreezeTargetSelection();
+        });
     }
 
     joinGame() {
@@ -557,8 +584,10 @@ class Flip7Game {
             return { uniqueCount: 0, handValue: 0 };
         }
         
-        const uniqueValues = new Set(cards.map(card => card.value));
-        const totalValue = cards.reduce((sum, card) => sum + card.value, 0);
+        // Filter out freeze cards for value calculations
+        const numericCards = cards.filter(card => card.value !== 'freeze');
+        const uniqueValues = new Set(numericCards.map(card => card.value));
+        const totalValue = numericCards.reduce((sum, card) => sum + card.value, 0);
         
         return {
             uniqueCount: uniqueValues.size,
@@ -898,10 +927,22 @@ class Flip7Game {
                 cardElement.className = 'deck-stack-card face-up-discard-card';
                 const colorClass = this.getCardColorClass(topCard.value);
                 const suitSymbol = this.getCardSuit(topCard.value);
+                const displayValue = topCard.value === 'freeze' ? '❄' : topCard.value;
+                
+                // Different styling for freeze cards
+                let cardColor = '#2c3e50'; // default black
+                let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
+                
+                if (colorClass === 'red-card') {
+                    cardColor = '#e74c3c';
+                } else if (colorClass === 'freeze-card') {
+                    cardColor = '#4682B4';
+                    cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+                }
                 
                 cardElement.style.cssText = `
-                    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-                    color: ${colorClass === 'red-card' ? '#e74c3c' : '#2c3e50'};
+                    background: ${cardBackground};
+                    color: ${cardColor};
                     display: flex;
                     flex-direction: column;
                     align-items: center;
@@ -910,7 +951,7 @@ class Flip7Game {
                 `;
                 
                 cardElement.innerHTML = `
-                    <div style="font-size: 1.25rem; line-height: 1; font-weight: bold;">${topCard.value}</div>
+                    <div style="font-size: 1.25rem; line-height: 1; font-weight: bold;">${displayValue}</div>
                     <div style="font-size: 1rem; line-height: 1;">${suitSymbol}</div>
                 `;
             } else {
@@ -1057,11 +1098,24 @@ class Flip7Game {
         setTimeout(() => {
             const colorClass = this.getCardColorClass(drawnCard.value);
             const suitSymbol = this.getCardSuit(drawnCard.value);
-            flyingCard.style.background = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
-            flyingCard.style.color = colorClass === 'red-card' ? '#e74c3c' : '#2c3e50';
+            const displayValue = drawnCard.value === 'freeze' ? '❄' : drawnCard.value;
+            
+            // Different styling for freeze cards
+            let cardColor = '#2c3e50';
+            let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
+            
+            if (colorClass === 'red-card') {
+                cardColor = '#e74c3c';
+            } else if (colorClass === 'freeze-card') {
+                cardColor = '#4682B4';
+                cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+            }
+            
+            flyingCard.style.background = cardBackground;
+            flyingCard.style.color = cardColor;
             flyingCard.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div style="font-size: 0.15rem; line-height: 1; font-weight: bold;">${drawnCard.value}</div>
+                    <div style="font-size: 0.15rem; line-height: 1; font-weight: bold;">${displayValue}</div>
                     <div style="font-size: 0.1rem; line-height: 1;">${suitSymbol}</div>
                 </div>
             `;
@@ -1327,6 +1381,9 @@ class Flip7Game {
     }
 
     getCardColorClass(value) {
+        // Handle freeze cards
+        if (value === 'freeze') return 'freeze-card';
+        
         // Alternate colors for visual variety while maintaining game logic
         if (value <= 3) return 'red-card';
         if (value <= 6) return 'black-card';
@@ -1335,6 +1392,9 @@ class Flip7Game {
     }
 
     getCardSuit(value) {
+        // Handle freeze cards
+        if (value === 'freeze') return '🧊'; // Ice cube symbol for freeze cards
+        
         // Assign suit symbols based on value for visual variety
         if (value <= 3) return '♥'; // Hearts (red)
         if (value <= 6) return '♠'; // Spades (black)
@@ -1455,15 +1515,69 @@ class Flip7Game {
             const colorClass = this.getCardColorClass(card.value);
             const suitSymbol = this.getCardSuit(card.value);
             const isDuplicate = valueCounts[card.value] > 1;
+            const displayValue = card.value === 'freeze' ? '❄' : card.value;
+            const cardTitle = card.value === 'freeze' ? 'Freeze Card 🧊' : 
+                            (isDuplicate ? `Duplicate value ${card.value}` : `${card.value} ${suitSymbol}`);
             
             return `
                 <div class="mini-card ${colorClass} ${isDuplicate ? 'duplicate-card' : ''}" 
-                     title="${isDuplicate ? `Duplicate value ${card.value}` : `${card.value} ${suitSymbol}`}">
-                    <div class="mini-card-value">${card.value}</div>
+                     title="${cardTitle}">
+                    <div class="mini-card-value">${displayValue}</div>
                     <div class="mini-card-suit">${suitSymbol}</div>
                 </div>
             `;
         }).join('');
+    }
+
+    // Freeze card methods
+    showFreezeTargetSelection() {
+        // Populate the select with all playing players except the current player
+        this.freezeTargetSelect.innerHTML = '<option value="">Choose player...</option>';
+        
+        if (this.gameState && this.gameState.players) {
+            Object.entries(this.gameState.players).forEach(([playerNumber, player]) => {
+                // Include all players that can be targeted (playing status and not the freeze card user)
+                if (player.status === 'playing' && parseInt(playerNumber) !== this.playerNumber) {
+                    const option = document.createElement('option');
+                    option.value = playerNumber;
+                    option.textContent = `Player ${playerNumber}: ${player.name}`;
+                    this.freezeTargetSelect.appendChild(option);
+                }
+            });
+            
+            // Also allow targeting self
+            const player = this.gameState.players[this.playerNumber];
+            if (player && player.status === 'playing') {
+                const option = document.createElement('option');
+                option.value = this.playerNumber;
+                option.textContent = `Player ${this.playerNumber}: ${player.name} (yourself)`;
+                this.freezeTargetSelect.appendChild(option);
+            }
+        }
+        
+        this.freezeTargetSelection.classList.remove('hidden');
+        this.updateFreezeApplyButton();
+    }
+
+    hideFreezeTargetSelection() {
+        this.freezeTargetSelection.classList.add('hidden');
+        this.freezeTargetSelect.value = '';
+        this.freezeApplyBtn.disabled = true;
+    }
+
+    updateFreezeApplyButton() {
+        this.freezeApplyBtn.disabled = !this.freezeTargetSelect.value;
+    }
+
+    applyFreeze() {
+        const targetPlayerNumber = parseInt(this.freezeTargetSelect.value);
+        if (!targetPlayerNumber) return;
+        
+        this.socket.emit('freeze-target-selected', {
+            targetPlayerNumber: targetPlayerNumber
+        });
+        
+        this.hideFreezeTargetSelection();
     }
 }
 

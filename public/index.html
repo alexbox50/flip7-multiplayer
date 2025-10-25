@@ -94,6 +94,16 @@
                                 <button id="draw-btn" class="action-btn">Twist</button>
                                 <button id="stick-btn" class="action-btn">Stick</button>
                             </div>
+                            
+                            <!-- Freeze Target Selection -->
+                            <div id="freeze-target-selection" class="freeze-selection hidden">
+                                <h4>🧊 Freeze Card - Choose Target</h4>
+                                <p>Select a player to force them to Stick:</p>
+                                <select id="freeze-target-select" class="freeze-select">
+                                    <option value="">Choose player...</option>
+                                </select>
+                                <button id="freeze-apply-btn" class="action-btn freeze-btn" disabled>Apply Freeze</button>
+                            </div>
                             <div id="round-info">
                                 <div>Round: <span id="current-round">1</span></div>
                             </div>

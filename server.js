@@ -21,7 +21,9 @@ let gameState = {
     discardPile: [], // Cards discarded from players' hands
     roundNumber: 1,
     roundStartPlayer: 1, // Track who started the current round
-    adminPassword: 'admin123' // Simple admin authentication
+    adminPassword: 'admin123', // Simple admin authentication
+    freezeCardActive: false, // Track if a freeze card is waiting for target selection
+    freezeCardPlayer: null // Player who drew the freeze card
 };
 
 // Player management - stable player numbers 1-18
@@ -41,6 +43,11 @@ function createDeck() {
         for (let count = 0; count < value; count++) {
             deck.push({ value: value, id: `${value}-${count}` });
         }
+    }
+    
+    // Add 3 Freeze cards
+    for (let count = 0; count < 3; count++) {
+        deck.push({ value: 'freeze', id: `freeze-${count}` });
     }
     
     return shuffleDeck(deck);
@@ -64,6 +71,10 @@ function startNewRound() {
     // For subsequent rounds, continue with existing deck and discard pile
     
     gameState.roundInProgress = true;
+    
+    // Reset freeze card state
+    gameState.freezeCardActive = false;
+    gameState.freezeCardPlayer = null;
     
     // Reset all players for new round
     Object.keys(gameState.players).forEach(playerNumber => {
@@ -115,7 +126,11 @@ function hasCardValue(playerNumber, value) {
 }
 
 function calculateHandValue(playerNumber) {
-    return gameState.players[playerNumber].cards.reduce((sum, card) => sum + card.value, 0);
+    return gameState.players[playerNumber].cards.reduce((sum, card) => {
+        // Freeze cards don't contribute to hand value
+        if (card.value === 'freeze') return sum;
+        return sum + card.value;
+    }, 0);
 }
 
 function checkRoundEnd() {
@@ -385,6 +400,26 @@ io.on('connection', (socket) => {
                 
                 player.hasDrawnFirstCard = true;
                 
+                // Check if it's a Freeze card
+                if (drawnCard.value === 'freeze') {
+                    // Remove freeze card from player's hand (it's not kept)
+                    player.cards.pop();
+                    
+                    gameState.freezeCardActive = true;
+                    gameState.freezeCardPlayer = playerNumber;
+                    
+                    io.to('game').emit('freeze-card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: true
+                    });
+                    
+                    // Don't advance turn yet - player needs to select target
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 io.to('game').emit('card-drawn', {
                     playerNumber,
                     playerName: player.name,
@@ -401,8 +436,29 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Freeze card
+                if (drawnCard.value === 'freeze') {
+                    // Remove freeze card from player's hand (it's not kept)
+                    player.cards.pop();
+                    
+                    gameState.freezeCardActive = true;
+                    gameState.freezeCardPlayer = playerNumber;
+                    
+                    io.to('game').emit('freeze-card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: false
+                    });
+                    
+                    // Don't advance turn yet - player needs to select target
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 // Check for bust (same value already in hand)
-                const cardValues = player.cards.map(c => c.value);
+                // Exclude freeze cards from value calculations
+                const cardValues = player.cards.filter(c => c.value !== 'freeze').map(c => c.value);
                 const uniqueValues = new Set(cardValues);
                 
                 if (cardValues.length !== uniqueValues.size) {
@@ -475,6 +531,52 @@ io.on('connection', (socket) => {
             } else {
                 nextPlayer();
             }
+        }
+        
+        io.to('game').emit('game-state', gameState);
+    });
+
+    // Handle freeze card target selection
+    socket.on('freeze-target-selected', (data) => {
+        const { targetPlayerNumber } = data;
+        const playerNumber = socket.playerNumber;
+        
+        if (!playerNumber || !gameState.players[playerNumber] || !gameState.roundInProgress) {
+            return;
+        }
+        
+        if (!gameState.freezeCardActive || gameState.freezeCardPlayer !== parseInt(playerNumber)) {
+            socket.emit('invalid-move', { message: 'No freeze card active or not your freeze card' });
+            return;
+        }
+        
+        const targetPlayer = gameState.players[targetPlayerNumber];
+        if (!targetPlayer || targetPlayer.status !== 'playing') {
+            socket.emit('invalid-move', { message: 'Invalid target player' });
+            return;
+        }
+        
+        // Apply freeze effect - force target to stick
+        targetPlayer.status = 'stuck';
+        targetPlayer.roundPoints = calculateHandValue(targetPlayerNumber);
+        
+        // Clear freeze card state
+        gameState.freezeCardActive = false;
+        gameState.freezeCardPlayer = null;
+        
+        io.to('game').emit('freeze-effect-applied', {
+            freezePlayerNumber: playerNumber,
+            freezePlayerName: gameState.players[playerNumber].name,
+            targetPlayerNumber: targetPlayerNumber,
+            targetPlayerName: targetPlayer.name,
+            targetHandValue: targetPlayer.roundPoints
+        });
+        
+        // Check if round should end
+        if (checkRoundEnd()) {
+            endRound();
+        } else {
+            nextPlayer();
         }
         
         io.to('game').emit('game-state', gameState);
