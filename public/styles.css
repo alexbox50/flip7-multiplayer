@@ -708,7 +708,6 @@ body {
 }
 
 .action-btn {
-    background: #4CAF50;
     color: white;
     border: none;
     padding: 12px 24px;
@@ -719,21 +718,32 @@ body {
     transition: background 0.3s;
 }
 
-.action-btn:hover {
-    background: #45a049;
-}
-
 .action-btn:disabled {
-    background: #666;
+    background: #666 !important;
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
+.action-btn:disabled:hover {
+    cursor: not-allowed !important;
+}
+
+/* Twist button - familiar blue */
+#draw-btn {
+    background: #007bff;
+}
+
+#draw-btn:not(:disabled):hover {
+    background: #0056b3;
+}
+
+/* Stick button - familiar green */
 #stick-btn {
-    background: #ff6b35;
+    background: #28a745;
 }
 
-#stick-btn:hover {
-    background: #e55a2b;
+#stick-btn:not(:disabled):hover {
+    background: #1e7e34;
 }
 
 #round-info {

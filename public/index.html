@@ -13,7 +13,7 @@
             <div class="container">
                 <h1>Flip 7 Multiplayer</h1>
                 <div class="connection-form">
-                    <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+                    <input type="text" id="player-name" placeholder="Enter your name" maxlength="20" autofocus>
                     <input type="number" id="player-number" placeholder="Player number (1-18, optional)" min="1" max="18">
                     <button id="join-btn">Join Game</button>
                     <button id="reconnect-btn">Reconnect</button>
@@ -89,14 +89,13 @@
 
                         <!-- Player Actions -->
                         <div class="player-actions">
-                            <h4>Your Turn</h4>
+                            <h4 id="turn-status">Your Turn</h4>
                             <div id="action-buttons">
-                                <button id="draw-btn" class="action-btn">Draw Card</button>
+                                <button id="draw-btn" class="action-btn">Twist</button>
                                 <button id="stick-btn" class="action-btn">Stick</button>
                             </div>
                             <div id="round-info">
                                 <div>Round: <span id="current-round">1</span></div>
-                                <div>Cards left: <span id="cards-left">0</span></div>
                             </div>
                         </div>
                     </div>

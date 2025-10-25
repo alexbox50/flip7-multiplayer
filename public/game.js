@@ -34,9 +34,9 @@ class Flip7Game {
         this.discardCount = document.getElementById('discard-count');
         this.discardStack = document.getElementById('discard-stack');
         this.currentRound = document.getElementById('current-round');
-        this.cardsLeft = document.getElementById('cards-left');
         this.drawBtn = document.getElementById('draw-btn');
         this.stickBtn = document.getElementById('stick-btn');
+        this.turnStatus = document.getElementById('turn-status');
         // handCards element removed - cards now displayed in main players table
         // this.currentTurn element removed - turn indication now handled by table row highlighting
         // this.gameMessage element removed - game info now shown in table
@@ -150,7 +150,6 @@ class Flip7Game {
             this.showMessage(message, 'info');
             this.startRoundBtn.style.display = 'none';
             this.currentRound.textContent = data.roundNumber;
-            this.cardsLeft.textContent = data.deckSize;
         });
 
         this.socket.on('deck-replenished', (data) => {
@@ -531,7 +530,6 @@ class Flip7Game {
             this.playersList.innerHTML = '';
             // handCards element no longer exists - cards shown in players table
             // currentTurn element removed - turn indication now handled by table row highlighting
-            this.cardsLeft.textContent = '0';
             this.deckCount.textContent = '0 cards';
             this.deckStack.innerHTML = '';
             this.currentRound.textContent = '1';
@@ -792,8 +790,6 @@ class Flip7Game {
         console.log(`Updating deck info: ${cardsRemaining} cards remaining, ${discardCount} discarded`);
         
         // Update text counters
-        this.cardsLeft.textContent = cardsRemaining;
-        
         if (this.deckCount) {
             this.deckCount.textContent = `${cardsRemaining} card${cardsRemaining !== 1 ? 's' : ''}`;
         }
@@ -1326,22 +1322,24 @@ class Flip7Game {
         const isMyTurn = this.gameState.currentPlayer === this.playerNumber;
         const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress;
         
+        // Always keep consistent button text
+        this.drawBtn.textContent = 'Twist';
+        this.stickBtn.textContent = 'Stick';
+        
+        // Update turn status text based on game state
+        if (this.turnStatus) {
+            if (!this.gameState.roundInProgress) {
+                this.turnStatus.textContent = "Waiting for game to start...";
+            } else if (isMyTurn) {
+                this.turnStatus.textContent = "It's your turn!";
+            } else {
+                this.turnStatus.textContent = "Waiting for your turn...";
+            }
+        }
+        
+        // Set enabled/disabled state
         this.drawBtn.disabled = !canAct;
         this.stickBtn.disabled = !canAct || (player && !player.hasDrawnFirstCard);
-        
-        if (isMyTurn && canAct) {
-            if (!player.hasDrawnFirstCard) {
-                this.drawBtn.textContent = 'Draw First Card';
-                this.stickBtn.textContent = 'Stick (Must draw first)';
-            } else {
-                this.drawBtn.textContent = 'Twist (Draw Card)';
-                this.stickBtn.textContent = 'Stick';
-            }
-        } else {
-            // Reset button text when not player's turn
-            this.drawBtn.textContent = 'Draw Card';
-            this.stickBtn.textContent = 'Stick';
-        }
     }
 
     renderCard(card) {
@@ -1472,7 +1470,7 @@ class Flip7Game {
 
     generatePlayerHandHTML(cards, playerNumber) {
         if (!cards || cards.length === 0) {
-            return '<span class="no-cards">No cards</span>';
+            return '';
         }
 
         // Filter out the animating card if this is the player who drew it
@@ -1483,7 +1481,7 @@ class Flip7Game {
             // Remove the last card (most recently drawn) during animation
             filteredCards = cards.slice(0, -1);
             if (filteredCards.length === 0) {
-                return '<span class="no-cards">Drawing card...</span>';
+                return '';
             }
         }
 
