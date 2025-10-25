@@ -391,9 +391,13 @@ class Flip7Game {
 
         this.updatePlayersList(); // This now includes leader info update
         this.updateDeckInfo();
-        this.updatePlayerHand();
+        
+        if (this.playerNumber && this.gameState.players[this.playerNumber]) {
+            this.updatePlayerHand();
+            this.updateActionButtons();
+        }
+        
         this.updateTurnIndicator();
-        this.updateActionButtons();
     }
 
     updatePlayersList() {
@@ -682,9 +686,12 @@ class Flip7Game {
     }
 
     updatePlayerHand() {
-        if (this.handCards) {
-            this.handCards.innerHTML = '';
+        if (!this.handCards) {
+            console.error('handCards element not found');
+            return;
         }
+        
+        this.handCards.innerHTML = '';
         
         if (!this.gameState.players[this.playerNumber]) {
             // No player data - reset displays
@@ -710,8 +717,14 @@ class Flip7Game {
 
         playerCards.forEach((card, index) => {
             const cardElement = document.createElement('div');
-            cardElement.innerHTML = this.renderCard(card);
+            const cardHTML = this.renderCard(card);
+            cardElement.innerHTML = cardHTML;
             const actualCard = cardElement.firstChild;
+            
+            if (!actualCard) {
+                console.error('Failed to create card element for:', card);
+                return;
+            }
             
             // Mark duplicates with special styling
             if (valueCounts[card.value] > 1) {
@@ -754,7 +767,7 @@ class Flip7Game {
         const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress;
         
         this.drawBtn.disabled = !canAct;
-        this.stickBtn.disabled = !canAct || !player.hasDrawnFirstCard;
+        this.stickBtn.disabled = !canAct || (player && !player.hasDrawnFirstCard);
         
         if (isMyTurn && canAct) {
             if (!player.hasDrawnFirstCard) {
@@ -764,6 +777,10 @@ class Flip7Game {
                 this.drawBtn.textContent = 'Twist (Draw Card)';
                 this.stickBtn.textContent = 'Stick';
             }
+        } else {
+            // Reset button text when not player's turn
+            this.drawBtn.textContent = 'Draw Card';
+            this.stickBtn.textContent = 'Stick';
         }
     }
 
