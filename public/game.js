@@ -47,6 +47,9 @@ class Flip7Game {
         this.dropPlayerNumber = document.getElementById('drop-player-number');
         this.dropPlayerBtn = document.getElementById('drop-player-btn');
         this.kickAllRestartBtn = document.getElementById('kick-all-restart-btn');
+
+        // Track if we're showing a persistent round summary
+        this.showingRoundSummary = false;
     }
 
     setupEventListeners() {
@@ -116,6 +119,9 @@ class Flip7Game {
         });
 
         this.socket.on('round-started', (data) => {
+            // Clear any persistent round summary when new round starts
+            this.showingRoundSummary = false;
+            
             let message = `Round ${data.roundNumber} started!`;
             if (data.startingPlayer) {
                 message += ` ${data.startingPlayer.playerName} goes first.`;
@@ -134,6 +140,7 @@ class Flip7Game {
         });
 
         this.socket.on('game-restarted', () => {
+            this.showingRoundSummary = false;
             this.showMessage('Game restarted by admin', 'info');
             this.startGameBtn.style.display = 'inline-block';
             this.startGameBtn.textContent = 'Start Game';
@@ -202,7 +209,9 @@ class Flip7Game {
                 this.startRoundBtn.style.display = 'inline-block';
             }
             
-            this.showMessage(message, data.gameComplete ? 'success' : 'info');
+            // Make round summary persistent (stays until Start Next Round is pressed)
+            const isPersistent = !data.gameComplete;
+            this.showMessage(message, data.gameComplete ? 'success' : 'info', isPersistent);
         });
 
         this.socket.on('game-completed', (data) => {
@@ -305,6 +314,11 @@ class Flip7Game {
     }
 
     startNextRound() {
+        // Clear the persistent round summary
+        if (this.showingRoundSummary) {
+            this.gameMessage.innerHTML = '';
+            this.showingRoundSummary = false;
+        }
         this.socket.emit('start-next-round');
     }
 
@@ -873,15 +887,19 @@ class Flip7Game {
         this.connectionStatus.className = type === 'error' ? 'status-error' : 'status-success';
     }
 
-    showMessage(message, type) {
+    showMessage(message, type, isPersistent = false) {
         this.gameMessage.innerHTML = `<div class="message ${type}">${message}</div>`;
         
-        // Auto-clear message after 5 seconds
-        setTimeout(() => {
-            if (this.gameMessage.innerHTML.includes(message)) {
-                this.gameMessage.innerHTML = '';
-            }
-        }, 5000);
+        if (isPersistent) {
+            this.showingRoundSummary = true;
+        } else {
+            // Auto-clear message after 5 seconds (but not if showing round summary)
+            setTimeout(() => {
+                if (!this.showingRoundSummary && this.gameMessage.innerHTML.includes(message)) {
+                    this.gameMessage.innerHTML = '';
+                }
+            }, 5000);
+        }
     }
 
     triggerFlip7Celebration(data) {
