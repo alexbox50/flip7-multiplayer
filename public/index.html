@@ -40,10 +40,25 @@
             </div>
 
             <div class="game-area">
-                <!-- Players List -->
+                <!-- Players Table -->
                 <div class="players-panel">
-                    <h3>Players</h3>
-                    <div id="players-list"></div>
+                    <h3>Players & Hands</h3>
+                    <div class="players-table-container">
+                        <table id="players-table" class="players-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Player</th>
+                                    <th>Cards</th>
+                                    <th>Points</th>
+                                    <th>Status</th>
+                                    <th>Current Hand</th>
+                                </tr>
+                            </thead>
+                            <tbody id="players-list">
+                            </tbody>
+                        </table>
+                    </div>
                     <div class="scoring-info">
                         <h4>Target: 200 Points</h4>
                         <div id="leader-info">No leader yet</div>

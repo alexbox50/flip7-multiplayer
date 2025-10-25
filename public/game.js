@@ -450,24 +450,24 @@ class Flip7Game {
         };
 
         playersByNumber.forEach(([playerNumber, player]) => {
-            const playerItem = document.createElement('div');
-            playerItem.className = 'player-item';
+            const playerRow = document.createElement('tr');
+            playerRow.className = 'player-row';
             
             if (parseInt(playerNumber) === this.gameState.currentPlayer) {
-                playerItem.classList.add('current-turn');
+                playerRow.classList.add('current-turn');
             }
             
             if (!player.connected) {
-                playerItem.classList.add('disconnected');
+                playerRow.classList.add('disconnected');
             }
 
             // Highlight leaders and players at target
             const playerPoints = player.points || 0;
             if (playerPoints === highestScore && highestScore > 0) {
-                playerItem.classList.add('leader');
+                playerRow.classList.add('leader');
             }
             if (playerPoints >= 200) {
-                playerItem.classList.add('at-target');
+                playerRow.classList.add('at-target');
             }
 
             const statusClass = `status-${player.status || 'waiting'}`;
@@ -476,19 +476,29 @@ class Flip7Game {
             const playerRank = rankingMap.get(playerNumber) || playersByNumber.length;
             const rankDisplay = getRankingDisplay(playerRank, playersByNumber.length);
             
-            playerItem.innerHTML = `
-                <span class="player-number">${playerNumber}</span>
-                <span class="player-name">${player.name}</span>
-                <span class="ranking-display" title="Current ranking">
+            // Generate hand cards HTML
+            const handCardsHTML = this.generatePlayerHandHTML(player.cards || []);
+            
+            playerRow.innerHTML = `
+                <td class="rank-cell">
                     <span class="rank-emoji">${rankDisplay.emoji}</span>
                     <span class="rank-text">${rankDisplay.text}</span>
-                </span>
-                <span class="card-count">${player.cards.length}</span>
-                <span class="player-points">${playerPoints}pts</span>
-                <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
+                </td>
+                <td class="player-cell">
+                    <span class="player-number">${playerNumber}</span>
+                    <span class="player-name">${player.name}</span>
+                </td>
+                <td class="card-count-cell">${player.cards.length}</td>
+                <td class="points-cell">${playerPoints}pts</td>
+                <td class="status-cell">
+                    <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
+                </td>
+                <td class="hand-cell">
+                    <div class="player-hand-display">${handCardsHTML}</div>
+                </td>
             `;
 
-            this.playersList.appendChild(playerItem);
+            this.playersList.appendChild(playerRow);
         });
 
         // Update leader info - convert playerRankings back to sortedPlayers format for compatibility
@@ -916,6 +926,32 @@ class Flip7Game {
             `;
             container.appendChild(confetti);
         }
+    }
+
+    generatePlayerHandHTML(cards) {
+        if (!cards || cards.length === 0) {
+            return '<span class="no-cards">No cards</span>';
+        }
+
+        // Count occurrences of each value to identify duplicates
+        const valueCounts = {};
+        cards.forEach(card => {
+            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+        });
+
+        return cards.map(card => {
+            const colorClass = this.getCardColorClass(card.value);
+            const suitSymbol = this.getCardSuit(card.value);
+            const isDuplicate = valueCounts[card.value] > 1;
+            
+            return `
+                <div class="mini-card ${colorClass} ${isDuplicate ? 'duplicate-card' : ''}" 
+                     title="${isDuplicate ? `Duplicate value ${card.value}` : `${card.value} ${suitSymbol}`}">
+                    <div class="mini-card-value">${card.value}</div>
+                    <div class="mini-card-suit">${suitSymbol}</div>
+                </div>
+            `;
+        }).join('');
     }
 }
 
