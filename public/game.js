@@ -38,9 +38,9 @@ class Flip7Game {
         this.drawBtn = document.getElementById('draw-btn');
         this.stickBtn = document.getElementById('stick-btn');
         // handCards element removed - cards now displayed in main players table
-        this.currentTurn = document.getElementById('current-turn');
-        this.gameMessage = document.getElementById('game-message');
-        this.leaderInfo = document.getElementById('leader-info');
+        // this.currentTurn element removed - turn indication now handled by table row highlighting
+        // this.gameMessage element removed - game info now shown in table
+        // this.leaderInfo element removed - points needed now shown in table column
 
         // Admin panel elements
         this.adminPassword = document.getElementById('admin-password');
@@ -453,7 +453,6 @@ class Flip7Game {
     startNextRound() {
         // Clear the persistent round summary
         if (this.showingRoundSummary) {
-            this.gameMessage.innerHTML = '';
             this.showingRoundSummary = false;
         }
         this.socket.emit('start-next-round');
@@ -531,14 +530,14 @@ class Flip7Game {
             // Clear display when no game state
             this.playersList.innerHTML = '';
             // handCards element no longer exists - cards shown in players table
-            this.currentTurn.innerHTML = 'No game in progress';
+            // currentTurn element removed - turn indication now handled by table row highlighting
             this.cardsLeft.textContent = '0';
             this.deckCount.textContent = '0 cards';
             this.deckStack.innerHTML = '';
             this.currentRound.textContent = '1';
             this.uniqueCount.textContent = '0';
             this.totalValue.textContent = '0';
-            this.leaderInfo.textContent = 'No leader yet';
+            // leaderInfo element removed - points needed now shown in table column
             this.drawBtn.disabled = true;
             this.stickBtn.disabled = true;
             return;
@@ -608,15 +607,13 @@ class Flip7Game {
 
         // Function to get ranking display
         const getRankingDisplay = (rank, totalPlayers) => {
-            if (totalPlayers === 1) return { emoji: '👤', text: '' };
+            if (totalPlayers === 1) return { emoji: '', text: '' };
             
             switch (rank) {
-                case 1: return { emoji: '👑', text: '1st' };
+                case 1: return { emoji: '🥇', text: '1st' };
                 case 2: return { emoji: '🥈', text: '2nd' };
                 case 3: return { emoji: '🥉', text: '3rd' };
-                case 4: return { emoji: '🏅', text: '4th' };
-                case 5: return { emoji: '⭐', text: '5th' };
-                default: return { emoji: '📍', text: `${rank}th` };
+                default: return { emoji: '💩', text: `${rank}th` };
             }
         };
 
@@ -645,31 +642,29 @@ class Flip7Game {
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
             const handStats = this.calculateHandStats(player.cards || []);
             
-            let statusClass = '';
-            const currentPlayerToCheck = this.animatingCard?.preserveCurrentPlayer ?? this.gameState.currentPlayer;
-            
-            if (!player.connected) {
-                statusClass = 'disconnected';
-            } else if (parseInt(playerNumber) === currentPlayerToCheck) {
-                statusClass = 'current-turn-status';
-            }
+            const statusClass = `status-${player.status || 'waiting'}`;
 
             const playerPoints = player.points || 0;
-            let pointsDisplay = `${playerPoints}pts`;
+            let pointsDisplay = `${playerPoints}`;
             if (playerPoints === highestScore && highestScore > 0 && playersAt200Plus.length > 0) {
-                pointsDisplay = `🏆 ${playerPoints}pts`;
+                pointsDisplay = `🏆 ${playerPoints}`;
             }
+            
+            const pointsRemaining = Math.max(0, 200 - playerPoints);
 
             existingRow.innerHTML = `
                 <td class="rank-cell">
                     <span class="rank-emoji">${rankDisplay.emoji}</span>
                     <span class="rank-text">${rankDisplay.text}</span>
                 </td>
-                <td class="player-cell">
+                <td class="player-number-cell">
                     <span class="player-number">${playerNumber}</span>
+                </td>
+                <td class="player-name-cell">
                     <span class="player-name">${player.name}</span>
                 </td>
                 <td class="points-cell">${pointsDisplay}</td>
+                <td class="points-remaining-cell">${pointsRemaining}</td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
                 </td>
@@ -683,9 +678,7 @@ class Flip7Game {
             existingRow.className = newClasses;
         });
 
-        // Update leader info
-        const sortedPlayers = playerRankings.map(p => [p.playerNumber, this.gameState.players[p.playerNumber]]);
-        this.updateLeaderInfo(sortedPlayers, playersAt200Plus);
+        // Leader info removed - points needed now shown in table column
     }
 
     updatePlayersList() {
@@ -719,15 +712,13 @@ class Flip7Game {
 
         // Function to get ranking emoji and text
         const getRankingDisplay = (rank, totalPlayers) => {
-            if (totalPlayers === 1) return { emoji: '👤', text: '' };
+            if (totalPlayers === 1) return { emoji: '', text: '' };
             
             switch (rank) {
-                case 1: return { emoji: '👑', text: '1st' };
+                case 1: return { emoji: '🥇', text: '1st' };
                 case 2: return { emoji: '🥈', text: '2nd' };
                 case 3: return { emoji: '🥉', text: '3rd' };
-                case 4: return { emoji: '🏅', text: '4th' };
-                case 5: return { emoji: '⭐', text: '5th' };
-                default: return { emoji: '📍', text: `${rank}th` };
+                default: return { emoji: '💩', text: `${rank}th` };
             }
         };
 
@@ -760,16 +751,21 @@ class Flip7Game {
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
             const handStats = this.calculateHandStats(player.cards || []);
             
+            const pointsRemaining = Math.max(0, 200 - playerPoints);
+            
             playerRow.innerHTML = `
                 <td class="rank-cell">
                     <span class="rank-emoji">${rankDisplay.emoji}</span>
                     <span class="rank-text">${rankDisplay.text}</span>
                 </td>
-                <td class="player-cell">
+                <td class="player-number-cell">
                     <span class="player-number">${playerNumber}</span>
+                </td>
+                <td class="player-name-cell">
                     <span class="player-name">${player.name}</span>
                 </td>
-                <td class="points-cell">${playerPoints}pts</td>
+                <td class="points-cell">${playerPoints}</td>
+                <td class="points-remaining-cell">${pointsRemaining}</td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
                 </td>
@@ -782,34 +778,11 @@ class Flip7Game {
             this.playersList.appendChild(playerRow);
         });
 
-        // Update leader info - convert playerRankings back to sortedPlayers format for compatibility
-        const sortedPlayers = playerRankings.map(p => [p.playerNumber, this.gameState.players[p.playerNumber]]);
-        this.updateLeaderInfo(sortedPlayers, playersAt200Plus);
+        // Leader info removed - points needed now shown in table column
     }
 
     updateLeaderInfo(sortedPlayers, playersAt200Plus) {
-        if (sortedPlayers.length === 0) {
-            this.leaderInfo.textContent = 'No players';
-            return;
-        }
-
-        const leader = sortedPlayers[0][1];
-        const leaderPoints = leader.points || 0;
-        
-        if (playersAt200Plus.length > 0) {
-            const topScore = playersAt200Plus[0].points;
-            const winners = playersAt200Plus.filter(p => p.points === topScore);
-            
-            if (winners.length === 1) {
-                const winnerPlayer = this.gameState.players[winners[0].playerNumber];
-                this.leaderInfo.innerHTML = `🏆 ${winnerPlayer.name}: ${topScore} pts<br><small>Game should end!</small>`;
-            } else {
-                this.leaderInfo.innerHTML = `🔥 ${winners.length}-way tie at ${topScore} pts<br><small>Continue until tie broken</small>`;
-            }
-        } else {
-            const pointsNeeded = 200 - leaderPoints;
-            this.leaderInfo.innerHTML = `👑 ${leader.name}: ${leaderPoints} pts<br><small>${pointsNeeded} to target</small>`;
-        }
+        // Leader info removed - points needed now shown in table column
     }
 
     updateDeckInfo() {
@@ -1011,8 +984,8 @@ class Flip7Game {
         
         if (visibleCards.length === 0) {
             // First card: position at the start of the hand area
-            targetX = handRect.left + 40; // cardWidth/2
-            targetY = handRect.top + 56; // cardHeight/2
+            targetX = handRect.left + 15; // cardWidth/2 (30px / 2)
+            targetY = handRect.top + 21; // cardHeight/2 (42px / 2)
         } else {
             // Debug: Let's see what cards are currently visible
             const currentVisibleCards = targetHandDisplay.querySelectorAll('.mini-card');
@@ -1034,7 +1007,7 @@ class Flip7Game {
                 const lastRect = lastVisibleCard.getBoundingClientRect();
                 
                 // Position directly to the right with the same spacing as between existing cards
-                let spacing = 82; // default card width + gap
+                let spacing = 32; // default mini-card width (30px) + gap (2px)
                 if (currentVisibleCards.length >= 2) {
                     const secondLastCard = currentVisibleCards[currentVisibleCards.length - 2];
                     const secondLastRect = secondLastCard.getBoundingClientRect();
@@ -1048,8 +1021,8 @@ class Flip7Game {
                 console.log(`Positioning next to last visible card: targetX=${targetX}, targetY=${targetY}`);
             } else {
                 // First card position
-                targetX = handRect.left + 40;
-                targetY = handRect.top + 56;
+                targetX = handRect.left + 15; // cardWidth/2 (30px / 2)
+                targetY = handRect.top + 21; // cardHeight/2 (42px / 2)
                 console.log(`First card position: targetX=${targetX}, targetY=${targetY}`);
             }
         }
@@ -1066,35 +1039,35 @@ class Flip7Game {
         const startX = deckRect.left + deckRect.width / 2;
         const startY = deckRect.top + deckRect.height / 2;
         
-        // Set initial position and styling
+        // Set initial position and styling to match mini-card dimensions
         flyingCard.style.cssText = `
             position: fixed;
-            left: ${startX - 40}px;
-            top: ${startY - 56}px;
-            width: 80px;
-            height: 112px;
+            left: ${startX - 15}px;
+            top: ${startY - 21}px;
+            width: 30px;
+            height: 42px;
             z-index: 2000;
             background: linear-gradient(135deg, #1e3c72, #2a5298);
-            border: 2px solid #333;
-            border-radius: 8px;
+            border: 1px solid #333;
+            border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 0.2rem;
             color: white;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
             transform: rotateY(0deg);
             transition: all 0.8s ease-in-out;
         `;
 
         // Start with card back
-        flyingCard.innerHTML = '<span style="font-size: 2rem;">🂠</span>';
+        flyingCard.innerHTML = '<span style="font-size: 0.2rem;">🂠</span>';
         document.body.appendChild(flyingCard);
 
         // Animate to target position with flip
         setTimeout(() => {
-            flyingCard.style.left = `${targetX - 40}px`;
-            flyingCard.style.top = `${targetY - 56}px`;
+            flyingCard.style.left = `${targetX - 15}px`;
+            flyingCard.style.top = `${targetY - 21}px`;
             flyingCard.style.transform = `rotateY(180deg)`;
         }, 50);
 
@@ -1106,8 +1079,8 @@ class Flip7Game {
             flyingCard.style.color = colorClass === 'red-card' ? '#e74c3c' : '#2c3e50';
             flyingCard.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div style="font-size: 1.25rem; line-height: 1;">${drawnCard.value}</div>
-                    <div style="font-size: 1rem; line-height: 1;">${suitSymbol}</div>
+                    <div style="font-size: 0.15rem; line-height: 1; font-weight: bold;">${drawnCard.value}</div>
+                    <div style="font-size: 0.1rem; line-height: 1;">${suitSymbol}</div>
                 </div>
             `;
         }, 400);
@@ -1318,24 +1291,9 @@ class Flip7Game {
     }
 
     updateTurnIndicator() {
+        // Update isMyTurn property - still needed for button states
         this.isMyTurn = this.gameState.currentPlayer === this.playerNumber;
-        
-        if (this.gameState.gameStarted) {
-            const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-            if (currentPlayer) {
-                this.currentTurn.innerHTML = `Current turn: ${currentPlayer.name} (#${this.gameState.currentPlayer})`;
-                
-                if (this.isMyTurn) {
-                    this.currentTurn.innerHTML += ' - <strong>YOUR TURN!</strong>';
-                    this.currentTurn.style.color = '#ff6b35';
-                } else {
-                    this.currentTurn.style.color = '#ffffff';
-                }
-            }
-        } else {
-            this.currentTurn.innerHTML = 'Game not started';
-            this.currentTurn.style.color = '#ffffff';
-        }
+        // Turn indication is now handled by table row highlighting
     }
 
     updateActionButtons() {
@@ -1416,17 +1374,11 @@ class Flip7Game {
     }
 
     showMessage(message, type, isPersistent = false) {
-        this.gameMessage.innerHTML = `<div class="message ${type}">${message}</div>`;
+        // Game message display removed - messages now shown via console or other UI elements
+        console.log(`Game message (${type}): ${message}`);
         
         if (isPersistent) {
             this.showingRoundSummary = true;
-        } else {
-            // Auto-clear message after 5 seconds (but not if showing round summary)
-            setTimeout(() => {
-                if (!this.showingRoundSummary && this.gameMessage.innerHTML.includes(message)) {
-                    this.gameMessage.innerHTML = '';
-                }
-            }, 5000);
         }
     }
 

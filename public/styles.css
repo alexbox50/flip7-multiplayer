@@ -111,6 +111,13 @@ body {
 .game-controls {
     display: flex;
     gap: 10px;
+    align-items: center;
+}
+
+.game-controls #player-info {
+    margin-right: auto;
+    font-weight: bold;
+    color: #fff;
 }
 
 .game-controls button {
@@ -193,13 +200,14 @@ body {
     text-align: left;
     font-weight: bold;
     color: #fff;
+    font-size: 0.62rem;
     border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .players-table td {
     padding: 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    vertical-align: top;
+    vertical-align: middle;
 }
 
 .player-row {
@@ -234,34 +242,43 @@ body {
 }
 
 .rank-emoji {
-    font-size: 1.2rem;
+    font-size: 1rem;
     display: block;
 }
 
 .rank-text {
-    font-size: 0.75rem;
+    font-size: 0.56rem;
     font-weight: bold;
     color: #ffd700;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
-.player-cell {
-    min-width: 120px;
+.player-number-cell {
+    text-align: center;
+    width: 60px;
+}
+
+.player-name-cell {
+    min-width: 80px;
 }
 
 .player-number {
     font-weight: bold;
     color: #ff6b35;
     margin-right: 8px;
+    font-size: 0.675rem;
 }
 
 .player-name {
     color: #fff;
+    font-size: 0.465rem;
 }
 
-.card-count-cell, .unique-cell, .hand-value-cell, .points-cell {
+.card-count-cell, .unique-cell, .hand-value-cell, .points-cell, .points-remaining-cell {
     text-align: center;
-    width: 60px;
+    width: 80px;
+    font-size: 0.73rem;
+    font-weight: bold;
 }
 
 .unique-cell {
@@ -301,12 +318,12 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 80px;
-    height: 112px;
+    width: 30px;
+    height: 42px;
     background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-    border: 2px solid #333;
-    border-radius: 8px;
-    font-size: 1rem;
+    border: 1px solid #333;
+    border-radius: 3px;
+    font-size: 0.2rem;
     font-weight: bold;
     cursor: pointer;
     transition: transform 0.2s ease;
@@ -378,9 +395,9 @@ body {
 }
 
 .status-indicator {
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 0.7rem;
+    padding: 2px 4px;
+    border-radius: 7px;
+    font-size: 0.56rem;
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -491,18 +508,18 @@ body {
 
 .deck-stack-card {
     position: absolute;
-    width: 80px;
-    height: 112px;
+    width: 30px;
+    height: 42px;
     background: linear-gradient(135deg, #1e3c72, #2a5298);
-    border: 2px solid #333;
-    border-radius: 8px;
+    border: 1px solid #333;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: 0.75rem;
     color: white;
     box-shadow: 
-        2px 2px 6px rgba(0,0,0,0.4),
+        1px 1px 3px rgba(0,0,0,0.4),
         0 0 0 1px rgba(255,255,255,0.1);
     transform-style: preserve-3d;
     transition: transform 0.3s ease;
@@ -1083,9 +1100,9 @@ body {
     }
     
     .mini-card {
-        width: 80px;
-        height: 112px;
-        font-size: 1rem;
+        width: 30px;
+        height: 42px;
+        font-size: 0.2rem;
     }
     
     .combined-game-section {

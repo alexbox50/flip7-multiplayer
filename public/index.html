@@ -27,12 +27,12 @@
             <div class="game-header">
                 <div class="game-info">
                     <h2>Flip 7</h2>
+                </div>
+                <div class="game-controls">
                     <div id="player-info">
                         Player <span id="current-player-number"></span>: 
                         <span id="current-player-name"></span>
                     </div>
-                </div>
-                <div class="game-controls">
                     <button id="start-game-btn">Start Game</button>
                     <button id="start-round-btn" style="display: none;">Start Next Round</button>
                     <button id="leave-game-btn">Leave Game</button>
@@ -46,26 +46,18 @@
                         <thead>
                             <tr>
                                 <th>Rank</th>
-                                <th>Player</th>
-                                <th>Points</th>
+                                <th>Player Number</th>
+                                <th>Player Name</th>
+                                <th>Points Scored</th>
+                                <th>Points Needed</th>
                                 <th>Status</th>
-                                <th>Current Hand Value</th>
+                                <th>Current Hand Points</th>
                                 <th>Current Hand</th>
                             </tr>
                         </thead>
                         <tbody id="players-list">
                         </tbody>
                     </table>
-                </div>
-                <div class="game-info-row">
-                    <div class="scoring-info">
-                        <h4>Target: 200 Points</h4>
-                        <div id="leader-info">No leader yet</div>
-                    </div>
-                    <div class="game-status">
-                        <div id="current-turn"></div>
-                        <div id="game-message"></div>
-                    </div>
                 </div>
             </div>
 
