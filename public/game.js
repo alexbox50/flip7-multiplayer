@@ -111,7 +111,20 @@ class Flip7Game {
 
         this.socket.on('game-state', (gameState) => {
             this.gameState = gameState;
-            this.updateGameDisplay();
+            console.log('game-state event received, animatingCard:', this.animatingCard);
+            // If we're animating, only update hands but preserve current player highlighting
+            if (this.animatingCard) {
+                this.updatePlayersListOnly();
+                this.updateDeckInfo();
+                // Still need to update action buttons and turn indicator even during animation
+                if (this.playerNumber && this.gameState.players[this.playerNumber]) {
+                    this.updatePlayerHand();
+                    this.updateActionButtons();
+                }
+                this.updateTurnIndicator();
+            } else {
+                this.updateGameDisplay();
+            }
         });
 
         this.socket.on('game-started', () => {
@@ -160,50 +173,55 @@ class Flip7Game {
             console.log('Drawing player number:', data.playerNumber);
             console.log('Is my turn?', data.playerNumber === this.playerNumber);
             
-            // For the drawing player, animate first then update display
+            // Show card draw animation for ALL players
+            console.log(`Card drawn by player ${data.playerNumber}, triggering animation`);
+            console.log('Card drawn data:', data);
+            
+            // Different messages for current player vs others
             if (data.playerNumber === this.playerNumber) {
-                console.log('Card drawn by current player, triggering animation');
-                console.log('Card drawn data:', data);
                 this.showMessage(`You drew: ${data.card.value}`, 'info');
-                
-                // Check if we're already animating (to prevent conflicts with flip-seven event)
-                if (this.animatingCard) {
-                    console.log('Already animating a card, skipping this animation');
-                    this.updateGameDisplay();
-                    return;
-                }
-                
-                // Store the card data for animation (even if it might be a bust)
-                this.animatingCard = {
-                    playerNumber: data.playerNumber,
-                    card: data.card,
-                    isBustCard: data.isBust || false, // Track if this might be a bust card
-                    isFlip7: data.isFlip7 || false // Track if this is the 7th card
-                };
-                
-                // Update display first (without the animating card)
-                this.updateGameDisplay();
-                
-                // Add a small delay to ensure DOM is fully updated before measuring positions
-                setTimeout(() => {
-                    console.log('Starting animation after DOM update delay');
-                    this.animateCardToHandWithFlip(data.playerNumber, data.card, () => {
-                        console.log('Animation completed, showing card');
-                        // Clear the animating card flag and update display to show all cards
-                        this.animatingCard = null;
-                        this.updateGameDisplay();
-                        
-                        // If this was a flip 7 card, we might need to trigger celebration
-                        if (data.isFlip7) {
-                            console.log('This was a flip 7 card, celebration should follow');
-                        }
-                    });
-                }, 50);
             } else {
-                // For other players, update display to show deck changes but no animation
-                this.updateGameDisplay();
                 this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
             }
+            
+            // Check if we're already animating (to prevent conflicts with flip-seven event)
+            if (this.animatingCard) {
+                console.log('Already animating a card, skipping this animation');
+                this.updateGameDisplay();
+                return;
+            }
+            
+            // Store the card data for animation (for any player)
+            // The drawing player should remain highlighted during their animation
+            console.log('Setting up animation - data.playerNumber:', data.playerNumber);
+            console.log('Setting up animation - gameState.currentPlayer before:', this.gameState.currentPlayer);
+            this.animatingCard = {
+                playerNumber: data.playerNumber,
+                card: data.card,
+                isBustCard: data.isBust || false, // Track if this might be a bust card
+                isFlip7: data.isFlip7 || false, // Track if this is the 7th card
+                preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
+            };
+            console.log('Created animatingCard:', this.animatingCard);
+            
+            // Update hands only, preserving current player highlighting during animation
+            this.updatePlayersListOnly();
+            
+            // Add a small delay to ensure DOM is fully updated before measuring positions
+            setTimeout(() => {
+                console.log(`Starting animation for player ${data.playerNumber} after DOM update delay`);
+                this.animateCardToHandWithFlip(data.playerNumber, data.card, () => {
+                    console.log(`Animation completed for player ${data.playerNumber}, showing card`);
+                    // Clear the animating card flag and do FULL update including current player highlighting
+                    this.animatingCard = null;
+                    this.updateGameDisplay(); // This will now update current player highlighting after animation
+                    
+                    // If this was a flip 7 card, we might need to trigger celebration
+                    if (data.isFlip7) {
+                        console.log('This was a flip 7 card, celebration should follow');
+                    }
+                });
+            }, 50);
         });
 
         this.socket.on('player-stuck', (data) => {
@@ -213,26 +231,29 @@ class Flip7Game {
         this.socket.on('player-bust', (data) => {
             console.log('Player bust event received:', data);
             
-            // If it's the current player who went bust, trigger animation for the bust card
-            if (data.playerNumber === this.playerNumber) {
-                console.log('Current player went bust, triggering bust card animation');
-                
+            // Show bust card animation for ALL players who go bust
+            console.log(`Player ${data.playerNumber} went bust, triggering bust card animation`);
+            
+            // Only animate if we have the drawn card data and not already animating
+            if (data.drawnCard && !this.animatingCard) {
                 // Set up animation for the bust card
                 this.animatingCard = {
                     playerNumber: data.playerNumber,
-                    card: data.drawnCard
+                    card: data.drawnCard,
+                    preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
                 };
                 
-                // Update display without the bust card first
-                this.updateGameDisplay();
+                // Update hands only, preserving current player highlighting during animation
+                this.updatePlayersListOnly();
                 
                 // Animate the bust card, then show it briefly before it gets discarded
                 setTimeout(() => {
                     this.animateCardToHandWithFlip(data.playerNumber, data.drawnCard, () => {
-                        console.log('Bust card animation completed');
-                        // Clear the animating card flag and update to show the bust card briefly
+                        console.log(`Bust card animation completed for player ${data.playerNumber}`);
+                        // Clear the animating card flag and do full update including current player highlighting
                         this.animatingCard = null;
-                        this.updateGameDisplay();
+                        this.updatePlayersListOnly();
+                        this.updatePlayerListAfterAnimation(); // Update current player highlighting after animation
                         
                         // Then after a short delay, trigger the discard animation and update again
                         setTimeout(() => {
@@ -241,6 +262,9 @@ class Flip7Game {
                         }, 1000);
                     });
                 }, 50);
+            } else {
+                // Just update display if no animation possible
+                this.updateGameDisplay();
             }
             
             this.showMessage(`${data.playerName} went BUST! Drew duplicate value ${data.drawnCard.value}`, 'error');
@@ -254,45 +278,41 @@ class Flip7Game {
             console.log('Is my flip 7?', data.playerNumber === this.playerNumber);
             console.log('Has drawnCard data?', !!data.drawnCard);
             
-            // If it's the current player who got Flip 7, try to animate the 7th card
-            if (data.playerNumber === this.playerNumber) {
-                console.log('Current player got Flip 7, attempting animation');
+            // Show Flip 7 animation for ALL players who achieve it
+            console.log(`Player ${data.playerNumber} got Flip 7, attempting animation`);
+            
+            // Get the player's cards to find the 7th card (most recent)
+            const player = this.gameState.players[data.playerNumber];
+            if (player && player.cards && player.cards.length >= 7 && !this.animatingCard) {
+                const seventhCard = player.cards[player.cards.length - 1]; // Last card should be the 7th
+                console.log('Found 7th card for animation:', seventhCard);
                 
-                // Get the player's cards to find the 7th card (most recent)
-                const player = this.gameState.players[data.playerNumber];
-                if (player && player.cards && player.cards.length >= 7) {
-                    const seventhCard = player.cards[player.cards.length - 1]; // Last card should be the 7th
-                    console.log('Found 7th card for animation:', seventhCard);
-                    
-                    // Set up animation for the 7th card
-                    this.animatingCard = {
-                        playerNumber: data.playerNumber,
-                        card: seventhCard,
-                        isFlip7Card: true
-                    };
-                    
-                    // Update display without the 7th card first
-                    this.updateGameDisplay();
-                    
-                    // Animate the 7th card
-                    setTimeout(() => {
-                        this.animateCardToHandWithFlip(data.playerNumber, seventhCard, () => {
-                            console.log('Flip 7 card animation completed');
-                            // Clear the animating card flag and update to show the 7th card
-                            this.animatingCard = null;
-                            this.updateGameDisplay();
-                            
-                            // Add celebration effect after card appears
-                            this.triggerFlip7Celebration(data);
-                        });
-                    }, 50);
-                } else {
-                    console.log('Could not find 7th card for animation, using fallback');
-                    this.updateGameDisplay();
-                    this.triggerFlip7Celebration(data);
-                }
+                // Set up animation for the 7th card
+                this.animatingCard = {
+                    playerNumber: data.playerNumber,
+                    card: seventhCard,
+                    isFlip7Card: true,
+                    preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
+                };
+                
+                // Update hands only, preserving current player highlighting during animation
+                this.updatePlayersListOnly();
+                
+                // Animate the 7th card
+                setTimeout(() => {
+                    this.animateCardToHandWithFlip(data.playerNumber, seventhCard, () => {
+                        console.log(`Flip 7 card animation completed for player ${data.playerNumber}`);
+                        // Clear the animating card flag and do full update including current player highlighting
+                        this.animatingCard = null;
+                        this.updatePlayersListOnly();
+                        this.updatePlayerListAfterAnimation(); // Update current player highlighting after animation
+                        
+                        // Add celebration effect after card appears
+                        this.triggerFlip7Celebration(data);
+                    });
+                }, 50);
             } else {
-                // For other players, just update display
+                console.log('Could not find 7th card for animation or already animating, using fallback');
                 this.updateGameDisplay();
                 this.triggerFlip7Celebration(data);
             }
@@ -558,6 +578,124 @@ class Flip7Game {
         };
     }
 
+    updatePlayersListOnly() {
+        // Update only the player hands without changing current player highlighting
+        // This preserves the current turn visual state during animations
+        
+        // Sort by player number (sequential order)
+        const playersByNumber = Object.entries(this.gameState.players)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b));
+
+        // Create ranking based on points (descending)
+        const playerRankings = Object.entries(this.gameState.players)
+            .map(([num, player]) => ({
+                playerNumber: num,
+                points: player.points || 0
+            }))
+            .sort((a, b) => b.points - a.points);
+
+        // Create ranking map with tied players getting same rank
+        const rankingMap = new Map();
+        let currentRank = 1;
+        for (let i = 0; i < playerRankings.length; i++) {
+            const player = playerRankings[i];
+            if (i > 0 && playerRankings[i-1].points !== player.points) {
+                currentRank = i + 1;
+            }
+            rankingMap.set(player.playerNumber, currentRank);
+        }
+
+        const highestScore = playerRankings.length > 0 ? playerRankings[0].points : 0;
+        const playersAt200Plus = playerRankings.filter(p => p.points >= 200);
+
+        // Function to get ranking display
+        const getRankingDisplay = (rank, totalPlayers) => {
+            if (totalPlayers === 1) return { emoji: '👤', text: '' };
+            
+            switch (rank) {
+                case 1: return { emoji: '👑', text: '1st' };
+                case 2: return { emoji: '🥈', text: '2nd' };
+                case 3: return { emoji: '🥉', text: '3rd' };
+                case 4: return { emoji: '🏅', text: '4th' };
+                case 5: return { emoji: '⭐', text: '5th' };
+                default: return { emoji: '📍', text: `${rank}th` };
+            }
+        };
+
+        // Determine which player should be highlighted as current
+        const currentPlayerToHighlight = this.animatingCard?.preserveCurrentPlayer ?? this.gameState.currentPlayer;
+        console.log('updatePlayersListOnly - animatingCard:', this.animatingCard);
+        console.log('updatePlayersListOnly - preserveCurrentPlayer:', this.animatingCard?.preserveCurrentPlayer);
+        console.log('updatePlayersListOnly - gameState.currentPlayer:', this.gameState.currentPlayer);
+        console.log('updatePlayersListOnly - currentPlayerToHighlight:', currentPlayerToHighlight);
+
+        // Update each existing row without changing current-turn highlighting during animation
+        playersByNumber.forEach(([playerNumber, player]) => {
+            // Find existing row
+            const existingRow = document.querySelector(`#players-table tr[data-player="${playerNumber}"]`);
+            if (!existingRow) return;
+
+            // Update classes based on preserved or actual current player
+            let newClasses = 'player-row';
+            if (parseInt(playerNumber) === currentPlayerToHighlight) {
+                newClasses += ' current-turn';
+            }
+            if (!player.connected) {
+                newClasses += ' disconnected';
+            }
+            
+            // Regenerate the row content
+            const playerRank = rankingMap.get(playerNumber) || playersByNumber.length;
+            const rankDisplay = getRankingDisplay(playerRank, playersByNumber.length);
+            
+            const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
+            const handStats = this.calculateHandStats(player.cards || []);
+            
+            let statusClass = '';
+            const currentPlayerToCheck = this.animatingCard?.preserveCurrentPlayer ?? this.gameState.currentPlayer;
+            
+            if (!player.connected) {
+                statusClass = 'disconnected';
+            } else if (parseInt(playerNumber) === currentPlayerToCheck) {
+                statusClass = 'current-turn-status';
+            }
+
+            const playerPoints = player.points || 0;
+            let pointsDisplay = `${playerPoints}pts`;
+            if (playerPoints === highestScore && highestScore > 0 && playersAt200Plus.length > 0) {
+                pointsDisplay = `🏆 ${playerPoints}pts`;
+            }
+
+            existingRow.innerHTML = `
+                <td class="rank-cell">
+                    <span class="rank-emoji">${rankDisplay.emoji}</span>
+                    <span class="rank-text">${rankDisplay.text}</span>
+                </td>
+                <td class="player-cell">
+                    <span class="player-number">${playerNumber}</span>
+                    <span class="player-name">${player.name}</span>
+                </td>
+                <td class="card-count-cell">${player.cards.length}</td>
+                <td class="unique-cell">${handStats.uniqueCount}</td>
+                <td class="hand-value-cell">${handStats.handValue}</td>
+                <td class="points-cell">${pointsDisplay}</td>
+                <td class="status-cell">
+                    <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
+                </td>
+                <td class="hand-cell">
+                    <div class="player-hand-display">${handCardsHTML}</div>
+                </td>
+            `;
+            
+            // Apply the updated classes (with preserved current-turn highlighting during animation)
+            existingRow.className = newClasses;
+        });
+
+        // Update leader info
+        const sortedPlayers = playerRankings.map(p => [p.playerNumber, this.gameState.players[p.playerNumber]]);
+        this.updateLeaderInfo(sortedPlayers, playersAt200Plus);
+    }
+
     updatePlayersList() {
         this.playersList.innerHTML = '';
         
@@ -604,6 +742,7 @@ class Flip7Game {
         playersByNumber.forEach(([playerNumber, player]) => {
             const playerRow = document.createElement('tr');
             playerRow.className = 'player-row';
+            playerRow.setAttribute('data-player', playerNumber); // Add data attribute for identification
             
             if (parseInt(playerNumber) === this.gameState.currentPlayer) {
                 playerRow.classList.add('current-turn');
