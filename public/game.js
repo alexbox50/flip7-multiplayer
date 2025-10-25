@@ -162,6 +162,12 @@ class Flip7Game {
 
         this.socket.on('flip-seven', (data) => {
             this.showMessage(`🎉 ${data.playerName} hit FLIP 7! ${data.handValue} + 15 bonus = ${data.totalPoints} points!`, 'success');
+            
+            // Force update game display to show the 7th card
+            this.updateGameDisplay();
+            
+            // Add celebration effect
+            this.triggerFlip7Celebration(data);
         });
 
         this.socket.on('round-ended', (data) => {
@@ -851,6 +857,65 @@ class Flip7Game {
                 this.gameMessage.innerHTML = '';
             }
         }, 5000);
+    }
+
+    triggerFlip7Celebration(data) {
+        // Create celebration overlay
+        const celebration = document.createElement('div');
+        celebration.className = 'flip7-celebration';
+        celebration.innerHTML = `
+            <div class="celebration-content">
+                <h1 class="celebration-title">🎉 FLIP 7! 🎉</h1>
+                <div class="celebration-details">
+                    <div class="player-name">${data.playerName}</div>
+                    <div class="celebration-score">
+                        <span class="hand-value">${data.handValue}</span>
+                        <span class="bonus">+15 bonus</span>
+                        <span class="equals">=</span>
+                        <span class="total-points">${data.totalPoints} points!</span>
+                    </div>
+                    <div class="celebration-subtitle">7 unique card values!</div>
+                </div>
+            </div>
+            <div class="confetti-container"></div>
+        `;
+        
+        document.body.appendChild(celebration);
+        
+        // Add confetti effect
+        this.createConfetti(celebration.querySelector('.confetti-container'));
+        
+        // Add special glow to player's cards
+        if (data.playerNumber === this.playerNumber && this.handCards) {
+            this.handCards.classList.add('flip7-glow');
+        }
+        
+        // Remove celebration after 4 seconds
+        setTimeout(() => {
+            celebration.remove();
+            if (this.handCards) {
+                this.handCards.classList.remove('flip7-glow');
+            }
+        }, 4000);
+    }
+
+    createConfetti(container) {
+        const colors = ['#ff6b35', '#f7931e', '#ffd700', '#4CAF50', '#2196F3', '#9C27B0'];
+        
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti-piece';
+            confetti.style.cssText = `
+                position: absolute;
+                width: 10px;
+                height: 10px;
+                background-color: ${colors[Math.floor(Math.random() * colors.length)]};
+                left: ${Math.random() * 100}%;
+                animation: confetti-fall ${2 + Math.random() * 3}s linear forwards;
+                animation-delay: ${Math.random() * 2}s;
+            `;
+            container.appendChild(confetti);
+        }
     }
 }
 

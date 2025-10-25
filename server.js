@@ -422,11 +422,16 @@ io.on('connection', (socket) => {
                         const handValue = calculateHandValue(playerNumber);
                         player.roundPoints = handValue + 15;
                         
+                        // Send updated game state so client can show the 7th card
+                        io.to('game').emit('game-state', gameState);
+                        
+                        // Then send flip-seven event for celebration
                         io.to('game').emit('flip-seven', {
                             playerNumber,
                             playerName: player.name,
                             handValue: handValue,
-                            totalPoints: player.roundPoints
+                            totalPoints: player.roundPoints,
+                            cards: player.cards // Include the full hand with 7 cards
                         });
                         
                         // Round ends immediately

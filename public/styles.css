@@ -465,6 +465,145 @@ body {
     }
 }
 
+/* Flip 7 Celebration Styles */
+.flip7-celebration {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: celebrationFadeIn 0.5s ease-out;
+}
+
+.celebration-content {
+    text-align: center;
+    color: white;
+    animation: celebrationBounce 1s ease-out;
+}
+
+.celebration-title {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    animation: titlePulse 2s ease-in-out infinite;
+}
+
+.player-name {
+    font-size: 2rem;
+    color: #ffd700;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.celebration-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+}
+
+.hand-value {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.bonus {
+    color: #ff6b35;
+    font-weight: bold;
+}
+
+.equals {
+    color: #fff;
+}
+
+.total-points {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1.8rem;
+}
+
+.celebration-subtitle {
+    font-size: 1.2rem;
+    color: #ddd;
+}
+
+.flip7-glow {
+    animation: flip7CardGlow 2s ease-in-out infinite;
+}
+
+.confetti-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+@keyframes celebrationFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(5px);
+    }
+}
+
+@keyframes celebrationBounce {
+    0% {
+        transform: scale(0.3) translateY(-100px);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1) translateY(0);
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes titlePulse {
+    0%, 100% {
+        transform: scale(1);
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    50% {
+        transform: scale(1.05);
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    }
+}
+
+@keyframes flip7CardGlow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 50px rgba(255, 215, 0, 0.7);
+    }
+}
+
+@keyframes confetti-fall {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
 .card.playable {
     border-color: #4CAF50;
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
