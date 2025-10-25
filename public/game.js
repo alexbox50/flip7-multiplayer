@@ -399,21 +399,47 @@ class Flip7Game {
     updatePlayersList() {
         this.playersList.innerHTML = '';
         
-        // Sort by total points (descending), then by player number
-        const sortedPlayers = Object.entries(this.gameState.players)
-            .sort(([a, playerA], [b, playerB]) => {
-                const pointsA = playerA.points || 0;
-                const pointsB = playerB.points || 0;
-                if (pointsA !== pointsB) {
-                    return pointsB - pointsA; // Descending by points
-                }
-                return parseInt(a) - parseInt(b); // Ascending by player number
-            });
+        // Sort by player number (sequential order)
+        const playersByNumber = Object.entries(this.gameState.players)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b));
 
-        const highestScore = sortedPlayers.length > 0 ? (sortedPlayers[0][1].points || 0) : 0;
-        const playersAt200Plus = sortedPlayers.filter(([, player]) => (player.points || 0) >= 200);
+        // Create ranking based on points (descending)
+        const playerRankings = Object.entries(this.gameState.players)
+            .map(([num, player]) => ({
+                playerNumber: num,
+                points: player.points || 0
+            }))
+            .sort((a, b) => b.points - a.points);
 
-        sortedPlayers.forEach(([playerNumber, player], index) => {
+        // Create ranking map with tied players getting same rank
+        const rankingMap = new Map();
+        let currentRank = 1;
+        for (let i = 0; i < playerRankings.length; i++) {
+            const player = playerRankings[i];
+            if (i > 0 && playerRankings[i-1].points !== player.points) {
+                currentRank = i + 1;
+            }
+            rankingMap.set(player.playerNumber, currentRank);
+        }
+
+        const highestScore = playerRankings.length > 0 ? playerRankings[0].points : 0;
+        const playersAt200Plus = playerRankings.filter(p => p.points >= 200);
+
+        // Function to get ranking emoji and text
+        const getRankingDisplay = (rank, totalPlayers) => {
+            if (totalPlayers === 1) return { emoji: '👤', text: '' };
+            
+            switch (rank) {
+                case 1: return { emoji: '👑', text: '1st' };
+                case 2: return { emoji: '🥈', text: '2nd' };
+                case 3: return { emoji: '🥉', text: '3rd' };
+                case 4: return { emoji: '🏅', text: '4th' };
+                case 5: return { emoji: '⭐', text: '5th' };
+                default: return { emoji: '📍', text: `${rank}th` };
+            }
+        };
+
+        playersByNumber.forEach(([playerNumber, player]) => {
             const playerItem = document.createElement('div');
             playerItem.className = 'player-item';
             
@@ -436,9 +462,17 @@ class Flip7Game {
 
             const statusClass = `status-${player.status || 'waiting'}`;
             
+            // Get ranking display
+            const playerRank = rankingMap.get(playerNumber) || playersByNumber.length;
+            const rankDisplay = getRankingDisplay(playerRank, playersByNumber.length);
+            
             playerItem.innerHTML = `
                 <span class="player-number">${playerNumber}</span>
                 <span class="player-name">${player.name}</span>
+                <span class="ranking-display" title="Current ranking">
+                    <span class="rank-emoji">${rankDisplay.emoji}</span>
+                    <span class="rank-text">${rankDisplay.text}</span>
+                </span>
                 <span class="card-count">${player.cards.length}</span>
                 <span class="player-points">${playerPoints}pts</span>
                 <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
