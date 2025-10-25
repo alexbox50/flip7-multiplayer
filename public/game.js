@@ -755,7 +755,26 @@ class Flip7Game {
         // Get deck position for starting point
         const deckRect = this.deckStack.getBoundingClientRect();
         
-        // Style the flying card
+        // Get target position (player's hand column in the table)
+        const playerRow = document.querySelector(`#players-table tr.current-turn .hand-cell`);
+        let targetX = window.innerWidth * 0.8; // fallback position
+        let targetY = window.innerHeight * 0.3;
+        
+        if (playerRow) {
+            const handRect = playerRow.getBoundingClientRect();
+            targetX = handRect.left + handRect.width / 2;
+            targetY = handRect.top + handRect.height / 2;
+            console.log(`Animation target: hand cell at (${targetX}, ${targetY})`);
+        } else {
+            console.log('No current-turn player row found, using fallback position');
+        }
+        
+        // Calculate the trajectory
+        const deltaX = targetX - (deckRect.left + 10);
+        const deltaY = targetY - (deckRect.top + 10);
+        console.log(`Card animation: deck at (${deckRect.left + 10}, ${deckRect.top + 10}) → hand at (${targetX}, ${targetY}), delta (${deltaX}, ${deltaY})`);
+        
+        // Style the flying card with CSS variables for animation endpoint
         flyingCard.style.cssText = `
             position: fixed;
             left: ${deckRect.left + 10}px;
@@ -773,6 +792,8 @@ class Flip7Game {
             color: white;
             box-shadow: 0 8px 16px rgba(0,0,0,0.5);
             transform: rotateX(5deg) rotateY(-2deg);
+            --target-x: ${deltaX}px;
+            --target-y: ${deltaY}px;
         `;
         
         // Add card back symbol
@@ -823,13 +844,24 @@ class Flip7Game {
         tempDiv.innerHTML = cardHtml;
         const renderedCard = tempDiv.firstElementChild;
         
-        // Position it starting from the player's row in the table
-        const playersTable = document.getElementById('players-table');
-        if (!playersTable) return;
+        // Get starting position from the player's row in the table
+        const playerRow = document.querySelector(`#players-table tr.current-turn .hand-cell`);
+        let startLeft = window.innerWidth * 0.7; // fallback
+        let startTop = window.innerHeight * 0.3;
         
-        const tableRect = playersTable.getBoundingClientRect();
-        const startLeft = tableRect.right - 200 + (index * 20); // Start from the hand column area
-        const startTop = tableRect.top + 100; // Approximate row height
+        if (playerRow) {
+            const handRect = playerRow.getBoundingClientRect();
+            startLeft = handRect.left + (index * 20);
+            startTop = handRect.top + handRect.height / 2;
+        }
+        
+        // Get target position (discard pile)
+        const discardRect = this.discardStack.getBoundingClientRect();
+        const targetX = discardRect.left + discardRect.width / 2;
+        const targetY = discardRect.top + discardRect.height / 2;
+        
+        const deltaX = targetX - startLeft;
+        const deltaY = targetY - startTop;
         
         flyingCard.style.cssText = `
             position: fixed;
@@ -847,6 +879,8 @@ class Flip7Game {
             font-size: 1rem;
             color: ${renderedCard ? renderedCard.style.color : '#333'};
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            --target-x: ${deltaX}px;
+            --target-y: ${deltaY}px;
         `;
         
         if (renderedCard) {
