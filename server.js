@@ -23,7 +23,10 @@ let gameState = {
     roundStartPlayer: 1, // Track who started the current round
     adminPassword: 'admin123', // Simple admin authentication
     freezeCardActive: false, // Track if a freeze card is waiting for target selection
-    freezeCardPlayer: null // Player who drew the freeze card
+    freezeCardPlayer: null, // Player who drew the freeze card
+    secondChanceActive: false, // Track if a second chance rescue is in progress
+    secondChancePlayer: null, // Player using second chance
+    duplicateCard: null // The duplicate card being rescued
 };
 
 // Player management - stable player numbers 1-18
@@ -46,8 +49,13 @@ function createDeck() {
     }
     
     // Add 3 Freeze cards
-    for (let count = 0; count < 3; count++) {
+    for (let count = 0; count < 0; count++) {
         deck.push({ value: 'freeze', id: `freeze-${count}` });
+    }
+    
+    // Add 3 Second Chance cards
+    for (let count = 0; count < 30; count++) {
+        deck.push({ value: 'second-chance', id: `second-chance-${count}` });
     }
     
     return shuffleDeck(deck);
@@ -72,9 +80,26 @@ function startNewRound() {
     
     gameState.roundInProgress = true;
     
+    // Debug logging for round start
+    console.log('=== ROUND START DEBUG ===');
+    console.log(`Round ${gameState.roundNumber} starting`);
+    console.log(`Total deck size: ${gameState.deck.length}`);
+    if (gameState.deck.length > 0) {
+        console.log(`Top card: ${gameState.deck[gameState.deck.length - 1].value} (id: ${gameState.deck[gameState.deck.length - 1].id})`);
+    }
+    if (gameState.deck.length > 1) {
+        console.log(`Next card: ${gameState.deck[gameState.deck.length - 2].value} (id: ${gameState.deck[gameState.deck.length - 2].id})`);
+    }
+    console.log('=========================');
+    
     // Reset freeze card state
     gameState.freezeCardActive = false;
     gameState.freezeCardPlayer = null;
+    
+    // Reset second chance state
+    gameState.secondChanceActive = false;
+    gameState.secondChancePlayer = null;
+    gameState.duplicateCard = null;
     
     // Reset all players for new round
     Object.keys(gameState.players).forEach(playerNumber => {
@@ -117,6 +142,14 @@ function drawCard(playerNumber) {
     }
     
     const card = gameState.deck.pop();
+    console.log(`=== CARD DRAWN ===`);
+    console.log(`Player ${playerNumber} drew: ${card.value} (id: ${card.id})`);
+    console.log(`Cards remaining in deck: ${gameState.deck.length}`);
+    if (gameState.deck.length > 0) {
+        console.log(`New top card: ${gameState.deck[gameState.deck.length - 1].value} (id: ${gameState.deck[gameState.deck.length - 1].id})`);
+    }
+    console.log('==================');
+    
     gameState.players[playerNumber].cards.push(card);
     return card;
 }
@@ -127,8 +160,10 @@ function hasCardValue(playerNumber, value) {
 
 function calculateHandValue(playerNumber) {
     return gameState.players[playerNumber].cards.reduce((sum, card) => {
-        // Freeze cards don't contribute to hand value
-        if (card.value === 'freeze') return sum;
+        // Freeze cards and Second Chance cards don't contribute to hand value
+        if (card.value === 'freeze' || card.value === 'second-chance') return sum;
+        // Ignored duplicate cards don't contribute to hand value
+        if (card.ignored) return sum;
         return sum + card.value;
     }, 0);
 }
@@ -139,6 +174,23 @@ function checkRoundEnd() {
 }
 
 function nextPlayer() {
+    // Debug logging for draw pile state
+    console.log('=== TURN CHANGE DEBUG ===');
+    console.log(`Current player: ${gameState.currentPlayer}`);
+    console.log(`Draw pile size: ${gameState.deck.length}`);
+    if (gameState.deck.length > 0) {
+        console.log(`Top card on draw pile: ${gameState.deck[gameState.deck.length - 1].value} (id: ${gameState.deck[gameState.deck.length - 1].id})`);
+    } else {
+        console.log('Draw pile is empty');
+    }
+    if (gameState.deck.length > 1) {
+        console.log(`Next card on draw pile: ${gameState.deck[gameState.deck.length - 2].value} (id: ${gameState.deck[gameState.deck.length - 2].id})`);
+    } else {
+        console.log('No next card available');
+    }
+    console.log(`Discard pile size: ${gameState.discardPile.length}`);
+    console.log('========================');
+    
     const playerNumbers = Object.keys(gameState.players).map(n => parseInt(n)).sort((a, b) => a - b);
     const currentIndex = playerNumbers.indexOf(gameState.currentPlayer);
     
@@ -429,6 +481,21 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Second Chance card
+                if (drawnCard.value === 'second-chance') {
+                    // Second Chance cards are kept in hand and turn ends normally
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: true
+                    });
+                    
+                    nextPlayer();
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 io.to('game').emit('card-drawn', {
                     playerNumber,
                     playerName: player.name,
@@ -474,21 +541,77 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Second Chance card
+                if (drawnCard.value === 'second-chance') {
+                    // Second Chance cards are kept in hand and turn ends
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: false
+                    });
+                    
+                    // Check if round should end
+                    if (checkRoundEnd()) {
+                        endRound();
+                    } else {
+                        nextPlayer();
+                    }
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 // Check for bust (same value already in hand)
-                // Exclude freeze cards from value calculations
-                const cardValues = player.cards.filter(c => c.value !== 'freeze').map(c => c.value);
+                // Exclude freeze cards, second chance cards, and ignored cards from value calculations
+                const cardValues = player.cards.filter(c => 
+                    c.value !== 'freeze' && 
+                    c.value !== 'second-chance' && 
+                    !c.ignored
+                ).map(c => c.value);
                 const uniqueValues = new Set(cardValues);
                 
                 if (cardValues.length !== uniqueValues.size) {
-                    // Player went bust
-                    player.status = 'bust';
-                    player.roundPoints = 0;
+                    // Check if player has Second Chance cards to use
+                    const secondChanceCards = player.cards.filter(c => c.value === 'second-chance');
                     
-                    io.to('game').emit('player-bust', {
-                        playerNumber,
-                        playerName: player.name,
-                        drawnCard: drawnCard
-                    });
+                    if (secondChanceCards.length > 0) {
+                        // Use Second Chance - mark duplicate as ignored and trigger animation sequence
+                        drawnCard.ignored = true;
+                        gameState.secondChanceActive = true;
+                        gameState.secondChancePlayer = playerNumber;
+                        gameState.duplicateCard = drawnCard;
+                        
+                        // First send normal card-drawn event for animation
+                        io.to('game').emit('card-drawn', {
+                            playerNumber,
+                            playerName: player.name,
+                            card: drawnCard,
+                            isFirstCard: false
+                        });
+                        
+                        // Then trigger second chance sequence after animation
+                        setTimeout(() => {
+                            io.to('game').emit('second-chance-activated', {
+                                playerNumber,
+                                playerName: player.name,
+                                duplicateCard: drawnCard,
+                                secondChanceCard: secondChanceCards[0]
+                            });
+                        }, 2000); // 2-second delay as specified
+                        
+                        io.to('game').emit('game-state', gameState);
+                        return;
+                    } else {
+                        // Player went bust - no Second Chance available
+                        player.status = 'bust';
+                        player.roundPoints = 0;
+                        
+                        io.to('game').emit('player-bust', {
+                            playerNumber,
+                            playerName: player.name,
+                            drawnCard: drawnCard
+                        });
+                    }
                 } else {
                     // Check for Flip 7 (7 unique values)
                     if (uniqueValues.size === 7) {
@@ -522,12 +645,18 @@ io.on('connection', (socket) => {
                     }
                 }
                 
+                // For regular cards in twist, advance turn after drawing
+                console.log(`=== REGULAR CARD TWIST ===`);
+                console.log(`Player ${playerNumber} drew regular card ${drawnCard.value}, turn should advance`);
+                console.log('===========================');
+                
                 // Check if round should end
                 if (checkRoundEnd()) {
                     endRound();
                 } else {
                     nextPlayer();
                 }
+                io.to('game').emit('game-state', gameState);
             }
         } else if (action === 'stick') {
             if (!player.hasDrawnFirstCard) {
@@ -598,6 +727,47 @@ io.on('connection', (socket) => {
         });
         
         // Check if round should end
+        if (checkRoundEnd()) {
+            endRound();
+        } else {
+            nextPlayer();
+        }
+        
+        io.to('game').emit('game-state', gameState);
+    });
+
+    // Handle Second Chance animation completion
+    socket.on('second-chance-complete', () => {
+        const playerNumber = socket.playerNumber;
+        
+        if (!playerNumber || !gameState.secondChanceActive || gameState.secondChancePlayer !== parseInt(playerNumber)) {
+            return;
+        }
+        
+        const player = gameState.players[playerNumber];
+        
+        // Remove the duplicate card and one Second Chance card from hand
+        const duplicateCard = gameState.duplicateCard;
+        const duplicateIndex = player.cards.findIndex(card => 
+            card.value === duplicateCard.value && card.id === duplicateCard.id
+        );
+        if (duplicateIndex !== -1) {
+            const removedDuplicate = player.cards.splice(duplicateIndex, 1)[0];
+            gameState.discardPile.push(removedDuplicate);
+        }
+        
+        const secondChanceIndex = player.cards.findIndex(card => card.value === 'second-chance');
+        if (secondChanceIndex !== -1) {
+            const removedSecondChance = player.cards.splice(secondChanceIndex, 1)[0];
+            gameState.discardPile.push(removedSecondChance);
+        }
+        
+        // Clear Second Chance state
+        gameState.secondChanceActive = false;
+        gameState.secondChancePlayer = null;
+        gameState.duplicateCard = null;
+        
+        // Continue with normal turn progression
         if (checkRoundEnd()) {
             endRound();
         } else {

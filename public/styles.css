@@ -372,6 +372,21 @@ body {
     font-weight: normal;
 }
 
+.mini-card.second-chance-card {
+    color: #28a745;
+    background: linear-gradient(135deg, #e8f5e8, #d4edda);
+    border-color: #28a745;
+    font-weight: bold;
+}
+
+.mini-card.ignored-card {
+    color: #6c757d;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-color: #6c757d;
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
 .mini-card.duplicate-card {
     border-color: #ff6b35;
     background: linear-gradient(145deg, #fff5f3 0%, #ffe8e1 100%);
@@ -1045,6 +1060,13 @@ body {
     color: #4682B4;
     background: linear-gradient(135deg, #E0F6FF, #B0E0E6);
     border: 2px solid #87CEEB;
+    font-weight: bold;
+}
+
+.second-chance-card {
+    color: #28a745;
+    background: linear-gradient(135deg, #e8f5e8, #d4edda);
+    border: 2px solid #28a745;
     font-weight: bold;
 }
 

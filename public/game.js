@@ -442,6 +442,16 @@ class Flip7Game {
             );
             this.hideFreezeTargetSelection();
         });
+
+        this.socket.on('second-chance-activated', (data) => {
+            this.showMessage(
+                `${data.playerName} used Second Chance! Duplicate card ignored.`, 
+                'success'
+            );
+            
+            // Start the animation sequence: duplicate out, then second chance out
+            this.animateSecondChanceSequence(data);
+        });
     }
 
     joinGame() {
@@ -585,8 +595,12 @@ class Flip7Game {
             return { uniqueCount: 0, handValue: 0 };
         }
         
-        // Filter out freeze cards for value calculations
-        const numericCards = cards.filter(card => card.value !== 'freeze');
+        // Filter out freeze cards, second chance cards, and ignored cards for value calculations
+        const numericCards = cards.filter(card => 
+            card.value !== 'freeze' && 
+            card.value !== 'second-chance' && 
+            !card.ignored
+        );
         const uniqueValues = new Set(numericCards.map(card => card.value));
         const totalValue = numericCards.reduce((sum, card) => sum + card.value, 0);
         
@@ -928,9 +942,11 @@ class Flip7Game {
                 cardElement.className = 'deck-stack-card face-up-discard-card';
                 const colorClass = this.getCardColorClass(topCard.value);
                 const suitSymbol = this.getCardSuit(topCard.value);
-                const displayValue = topCard.value === 'freeze' ? '❄' : topCard.value;
+                let displayValue = topCard.value;
+                if (topCard.value === 'freeze') displayValue = '❄';
+                else if (topCard.value === 'second-chance') displayValue = '🔄';
                 
-                // Different styling for freeze cards
+                // Different styling for special cards
                 let cardColor = '#2c3e50'; // default black
                 let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
                 
@@ -939,6 +955,9 @@ class Flip7Game {
                 } else if (colorClass === 'freeze-card') {
                     cardColor = '#4682B4';
                     cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+                } else if (colorClass === 'second-chance-card') {
+                    cardColor = '#28a745';
+                    cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
                 }
                 
                 cardElement.style.cssText = `
@@ -1099,9 +1118,12 @@ class Flip7Game {
         setTimeout(() => {
             const colorClass = this.getCardColorClass(drawnCard.value);
             const suitSymbol = this.getCardSuit(drawnCard.value);
-            const displayValue = drawnCard.value === 'freeze' ? '❄' : drawnCard.value;
             
-            // Different styling for freeze cards
+            let displayValue = drawnCard.value;
+            if (drawnCard.value === 'freeze') displayValue = '❄';
+            else if (drawnCard.value === 'second-chance') displayValue = '🔄';
+            
+            // Different styling for special cards
             let cardColor = '#2c3e50';
             let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
             
@@ -1110,6 +1132,9 @@ class Flip7Game {
             } else if (colorClass === 'freeze-card') {
                 cardColor = '#4682B4';
                 cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+            } else if (colorClass === 'second-chance-card') {
+                cardColor = '#28a745';
+                cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
             }
             
             flyingCard.style.background = cardBackground;
@@ -1382,8 +1407,9 @@ class Flip7Game {
     }
 
     getCardColorClass(value) {
-        // Handle freeze cards
+        // Handle special cards
         if (value === 'freeze') return 'freeze-card';
+        if (value === 'second-chance') return 'second-chance-card';
         
         // Alternate colors for visual variety while maintaining game logic
         if (value <= 3) return 'red-card';
@@ -1393,8 +1419,9 @@ class Flip7Game {
     }
 
     getCardSuit(value) {
-        // Handle freeze cards
+        // Handle special cards
         if (value === 'freeze') return '🧊'; // Ice cube symbol for freeze cards
+        if (value === 'second-chance') return '🔄'; // Refresh symbol for second chance cards
         
         // Assign suit symbols based on value for visual variety
         if (value <= 3) return '♥'; // Hearts (red)
@@ -1516,7 +1543,10 @@ class Flip7Game {
             const colorClass = this.getCardColorClass(card.value);
             const suitSymbol = this.getCardSuit(card.value);
             const isDuplicate = valueCounts[card.value] > 1;
-            const displayValue = card.value === 'freeze' ? '❄' : card.value;
+            
+            let displayValue = card.value;
+            if (card.value === 'freeze') displayValue = '❄';
+            else if (card.value === 'second-chance') displayValue = '🔄';
             
             let cardTitle = '';
             let additionalClasses = '';
@@ -1528,6 +1558,11 @@ class Flip7Game {
                 } else {
                     cardTitle = 'Freeze Card 🧊';
                 }
+            } else if (card.value === 'second-chance') {
+                cardTitle = 'Second Chance Card 🔄';
+            } else if (card.ignored) {
+                cardTitle = `Duplicate ${card.value} (Ignored by Second Chance)`;
+                additionalClasses = 'ignored-card';
             } else if (isDuplicate) {
                 cardTitle = `Duplicate value ${card.value}`;
                 additionalClasses = 'duplicate-card';
@@ -1594,6 +1629,98 @@ class Flip7Game {
         });
         
         this.hideFreezeTargetSelection();
+    }
+
+    // Second Chance animation sequence
+    animateSecondChanceSequence(data) {
+        // First animate the duplicate card out to discard pile
+        this.animateCardToDiscard(data.duplicateCard, data.playerNumber, () => {
+            // Then animate the second chance card out to discard pile
+            this.animateCardToDiscard(data.secondChanceCard, data.playerNumber, () => {
+                // Notify server that animation is complete
+                this.socket.emit('second-chance-complete');
+            });
+        });
+    }
+
+    animateCardToDiscard(card, playerNumber, onComplete) {
+        // Find the player's hand element
+        const playerRow = document.querySelector(`tr[data-player-number="${playerNumber}"]`);
+        if (!playerRow) {
+            onComplete();
+            return;
+        }
+
+        const handElement = playerRow.querySelector('.player-hand');
+        if (!handElement) {
+            onComplete();
+            return;
+        }
+
+        // Get positions
+        const handRect = handElement.getBoundingClientRect();
+        const discardRect = this.discardStack.getBoundingClientRect();
+
+        // Create flying card
+        const flyingCard = document.createElement('div');
+        flyingCard.className = 'flying-card';
+        flyingCard.style.cssText = `
+            position: fixed;
+            left: ${handRect.left + handRect.width/2 - 15}px;
+            top: ${handRect.top + handRect.height/2 - 21}px;
+            width: 30px;
+            height: 42px;
+            background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #333;
+            border-radius: 3px;
+            z-index: 1000;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            transition: all 0.8s ease-in-out;
+        `;
+
+        const colorClass = this.getCardColorClass(card.value);
+        const suitSymbol = this.getCardSuit(card.value);
+        let displayValue = card.value;
+        if (card.value === 'second-chance') displayValue = '🔄';
+
+        let cardColor = '#2c3e50';
+        let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
+
+        if (colorClass === 'red-card') {
+            cardColor = '#e74c3c';
+        } else if (colorClass === 'second-chance-card') {
+            cardColor = '#28a745';
+            cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+        }
+
+        flyingCard.style.background = cardBackground;
+        flyingCard.style.color = cardColor;
+        flyingCard.innerHTML = `
+            <div style="font-size: 0.6rem; line-height: 1;">${displayValue}</div>
+            <div style="font-size: 0.5rem; line-height: 1;">${suitSymbol}</div>
+        `;
+
+        document.body.appendChild(flyingCard);
+
+        // Animate to discard pile
+        setTimeout(() => {
+            flyingCard.style.left = `${discardRect.left + discardRect.width/2 - 15}px`;
+            flyingCard.style.top = `${discardRect.top + discardRect.height/2 - 21}px`;
+            flyingCard.style.transform = 'scale(0.8)';
+            flyingCard.style.opacity = '0.8';
+        }, 50);
+
+        // Complete animation
+        setTimeout(() => {
+            flyingCard.remove();
+            onComplete();
+        }, 850);
     }
 }
 
