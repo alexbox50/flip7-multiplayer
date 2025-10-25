@@ -39,26 +39,27 @@
                 </div>
             </div>
 
-            <div class="game-area">
-                <!-- Players Table -->
-                <div class="players-panel">
-                    <h3>Players & Hands</h3>
-                    <div class="players-table-container">
-                        <table id="players-table" class="players-table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>Player</th>
-                                    <th>Cards</th>
-                                    <th>Points</th>
-                                    <th>Status</th>
-                                    <th>Current Hand</th>
-                                </tr>
-                            </thead>
-                            <tbody id="players-list">
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- Players Table - Full Width -->
+            <div class="players-panel-fullwidth">
+                <div class="players-table-container">
+                    <table id="players-table" class="players-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Cards</th>
+                                <th>Unique</th>
+                                <th>Hand Value</th>
+                                <th>Points</th>
+                                <th>Status</th>
+                                <th>Current Hand</th>
+                            </tr>
+                        </thead>
+                        <tbody id="players-list">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="game-info-row">
                     <div class="scoring-info">
                         <h4>Target: 200 Points</h4>
                         <div id="leader-info">No leader yet</div>
@@ -68,49 +69,49 @@
                         <div id="game-message"></div>
                     </div>
                 </div>
+            </div>
 
+            <div class="game-area">
                 <!-- Game Board -->
                 <div class="game-board">
-                    <div class="deck-area">
-                        <div class="pile-container">
-                            <h4>Draw Pile</h4>
-                            <div id="deck-info">
-                                <div id="deck-stack" class="deck-stack">
-                                    <!-- Cards will be dynamically added here -->
+                    <div class="combined-game-section">
+                        <!-- Deck Area -->
+                        <div class="deck-area">
+                            <div class="pile-container">
+                                <h4>Draw Pile</h4>
+                                <div id="deck-info">
+                                    <div id="deck-stack" class="deck-stack">
+                                        <!-- Cards will be dynamically added here -->
+                                    </div>
+                                    <div id="deck-count">0 cards</div>
                                 </div>
-                                <div id="deck-count">0 cards</div>
+                            </div>
+                            <div class="pile-container">
+                                <h4>Discard Pile</h4>
+                                <div id="discard-info">
+                                    <div id="discard-stack" class="deck-stack">
+                                        <!-- Discard cards will be dynamically added here -->
+                                    </div>
+                                    <div id="discard-count">0 cards</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="pile-container">
-                            <h4>Discard Pile</h4>
-                            <div id="discard-info">
-                                <div id="discard-stack" class="deck-stack">
-                                    <!-- Discard cards will be dynamically added here -->
-                                </div>
-                                <div id="discard-count">0 cards</div>
+
+                        <!-- Player Actions -->
+                        <div class="player-actions">
+                            <h4>Your Turn</h4>
+                            <div id="action-buttons">
+                                <button id="draw-btn" class="action-btn">Draw Card</button>
+                                <button id="stick-btn" class="action-btn">Stick</button>
+                            </div>
+                            <div id="round-info">
+                                <div>Round: <span id="current-round">1</span></div>
+                                <div>Cards left: <span id="cards-left">0</span></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Player Actions -->
-                    <div class="player-actions">
-                        <h4>Your Turn</h4>
-                        <div id="action-buttons">
-                            <button id="draw-btn" class="action-btn">Draw Card</button>
-                            <button id="stick-btn" class="action-btn">Stick</button>
-                        </div>
-                        <div id="round-info">
-                            <div>Round: <span id="current-round">1</span></div>
-                            <div>Cards left: <span id="cards-left">0</span></div>
-                        </div>
-                    </div>
 
-                    <!-- Player's Hand -->
-                    <div class="player-hand">
-                        <h4>Your Cards (<span id="unique-count">0</span> unique values)</h4>
-                        <div id="hand-cards" class="cards-container"></div>
-                        <div id="hand-value">Hand Value: <span id="total-value">0</span></div>
-                    </div>
                 </div>
             </div>
 

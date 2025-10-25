@@ -37,8 +37,6 @@ class Flip7Game {
         this.drawBtn = document.getElementById('draw-btn');
         this.stickBtn = document.getElementById('stick-btn');
         this.handCards = document.getElementById('hand-cards');
-        this.uniqueCount = document.getElementById('unique-count');
-        this.totalValue = document.getElementById('total-value');
         this.currentTurn = document.getElementById('current-turn');
         this.gameMessage = document.getElementById('game-message');
         this.leaderInfo = document.getElementById('leader-info');
@@ -406,6 +404,21 @@ class Flip7Game {
         this.updateTurnIndicator();
     }
 
+    // Helper function to calculate hand stats for any player
+    calculateHandStats(cards) {
+        if (!cards || cards.length === 0) {
+            return { uniqueCount: 0, handValue: 0 };
+        }
+        
+        const uniqueValues = new Set(cards.map(card => card.value));
+        const totalValue = cards.reduce((sum, card) => sum + card.value, 0);
+        
+        return {
+            uniqueCount: uniqueValues.size,
+            handValue: totalValue
+        };
+    }
+
     updatePlayersList() {
         this.playersList.innerHTML = '';
         
@@ -476,8 +489,9 @@ class Flip7Game {
             const playerRank = rankingMap.get(playerNumber) || playersByNumber.length;
             const rankDisplay = getRankingDisplay(playerRank, playersByNumber.length);
             
-            // Generate hand cards HTML
+            // Generate hand cards HTML and calculate stats
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || []);
+            const handStats = this.calculateHandStats(player.cards || []);
             
             playerRow.innerHTML = `
                 <td class="rank-cell">
@@ -489,6 +503,8 @@ class Flip7Game {
                     <span class="player-name">${player.name}</span>
                 </td>
                 <td class="card-count-cell">${player.cards.length}</td>
+                <td class="unique-cell">${handStats.uniqueCount}</td>
+                <td class="hand-value-cell">${handStats.handValue}</td>
                 <td class="points-cell">${playerPoints}pts</td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
@@ -722,8 +738,7 @@ class Flip7Game {
         const uniqueValues = new Set(playerCards.map(card => card.value));
         const totalValue = playerCards.reduce((sum, card) => sum + card.value, 0);
         
-        if (this.uniqueCount) this.uniqueCount.textContent = uniqueValues.size;
-        if (this.totalValue) this.totalValue.textContent = totalValue;
+        // Unique count and hand value are now displayed in the players table
 
         // Count occurrences of each value to identify duplicates
         const valueCounts = {};

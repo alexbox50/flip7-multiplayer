@@ -141,10 +141,27 @@ body {
 }
 
 .game-area {
-    display: grid;
-    grid-template-columns: 250px 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 20px;
     margin-bottom: 20px;
+}
+
+/* Players Panel - Full Width */
+.players-panel-fullwidth {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.game-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
 }
 
 /* Players Panel */
@@ -242,9 +259,19 @@ body {
     color: #fff;
 }
 
-.card-count-cell, .points-cell {
+.card-count-cell, .unique-cell, .hand-value-cell, .points-cell {
     text-align: center;
     width: 60px;
+}
+
+.unique-cell {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.hand-value-cell {
+    color: #2196F3;
+    font-weight: bold;
 }
 
 .status-cell {
@@ -419,9 +446,16 @@ body {
 
 /* Game Board */
 .game-board {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 20px;
+}
+
+.combined-game-section {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
 }
 
 .deck-area {
@@ -432,6 +466,7 @@ body {
     justify-content: space-around;
     align-items: flex-start;
     gap: 20px;
+    flex: 1;
 }
 
 .pile-container {
@@ -493,6 +528,8 @@ body {
     padding: 20px;
     border-radius: 10px;
     text-align: center;
+    flex: 0 0 300px;
+    min-width: 250px;
 }
 
 .player-actions h4 {
@@ -892,8 +929,37 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .game-area {
-        grid-template-columns: 1fr;
+    .players-panel-fullwidth {
+        padding: 15px;
+    }
+    
+    .game-info-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .players-table {
+        font-size: 0.9rem;
+    }
+    
+    .players-table th,
+    .players-table td {
+        padding: 6px 4px;
+    }
+    
+    .mini-card {
+        width: 18px;
+        height: 24px;
+        font-size: 0.6rem;
+    }
+    
+    .combined-game-section {
+        flex-direction: column;
+    }
+    
+    .player-actions {
+        flex: 1;
+        min-width: auto;
     }
     
     .game-header {
