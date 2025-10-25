@@ -238,8 +238,7 @@ class Flip7Game {
                     preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
                 };
                 
-                // Update hands only, preserving current player highlighting during animation
-                this.updatePlayersListOnly();
+                // Don't update player list here - let animation complete first to show BUST status after card lands
                 
                 // Animate the bust card, then show it briefly before it gets discarded
                 setTimeout(() => {
@@ -640,7 +639,15 @@ class Flip7Game {
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
             const handStats = this.calculateHandStats(player.cards || []);
             
-            const statusClass = `status-${player.status || 'waiting'}`;
+            // Don't show BUST status during bust card animation - show previous status instead
+            let displayStatus = player.status || 'waiting';
+            if (this.animatingCard && 
+                this.animatingCard.playerNumber === parseInt(playerNumber) && 
+                player.status === 'bust') {
+                displayStatus = 'playing'; // Show as playing during bust animation
+            }
+            
+            const statusClass = `status-${displayStatus}`;
 
             const playerPoints = player.points || 0;
             let pointsDisplay = `${playerPoints}`;
@@ -664,7 +671,7 @@ class Flip7Game {
                 <td class="points-cell">${pointsDisplay}</td>
                 <td class="points-remaining-cell">${pointsRemaining}</td>
                 <td class="status-cell">
-                    <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
+                    <span class="status-indicator ${statusClass}">${displayStatus}</span>
                 </td>
                 <td class="hand-value-cell">${handStats.handValue}</td>
                 <td class="hand-cell">
@@ -852,29 +859,6 @@ class Flip7Game {
             this.deckStack.appendChild(cardElement);
         }
         console.log(`Deck stack now has ${this.deckStack.children.length} visual elements`);
-        
-        // Add indicator if there are more cards than visual representation
-        if (cardCount > maxVisualCards) {
-            const moreIndicator = document.createElement('div');
-            moreIndicator.textContent = `+${cardCount - maxVisualCards}`;
-            moreIndicator.style.cssText = `
-                position: absolute;
-                top: -5px;
-                right: -5px;
-                background: #ff6b35;
-                color: white;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                font-size: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                z-index: ${maxVisualCards + 1};
-            `;
-            this.deckStack.appendChild(moreIndicator);
-        }
     }
 
     updateDiscardStack(cardCount) {
@@ -926,8 +910,8 @@ class Flip7Game {
                 `;
                 
                 cardElement.innerHTML = `
-                    <div style="font-size: 0.15rem; line-height: 1; font-weight: bold;">${topCard.value}</div>
-                    <div style="font-size: 0.1rem; line-height: 1;">${suitSymbol}</div>
+                    <div style="font-size: 1.25rem; line-height: 1; font-weight: bold;">${topCard.value}</div>
+                    <div style="font-size: 1rem; line-height: 1;">${suitSymbol}</div>
                 `;
             } else {
                 // Face down cards
@@ -935,29 +919,6 @@ class Flip7Game {
             }
             
             this.discardStack.appendChild(cardElement);
-        }
-        
-        // Add indicator if there are more cards than visual representation
-        if (cardCount > maxVisualCards) {
-            const moreIndicator = document.createElement('div');
-            moreIndicator.textContent = `+${cardCount - maxVisualCards}`;
-            moreIndicator.style.cssText = `
-                position: absolute;
-                top: -5px;
-                right: -5px;
-                background: #8b4513;
-                color: white;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                font-size: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                z-index: ${maxVisualCards + 1};
-            `;
-            this.discardStack.appendChild(moreIndicator);
         }
     }
 
@@ -1420,7 +1381,6 @@ class Flip7Game {
                         <span class="equals">=</span>
                         <span class="total-points">${data.totalPoints} points!</span>
                     </div>
-                    <div class="celebration-subtitle">7 unique card values!</div>
                 </div>
             </div>
             <div class="confetti-container"></div>

@@ -264,6 +264,8 @@ body {
 .player-number-cell {
     text-align: center;
     width: 60px;
+    font-size: 0.9rem;
+    font-weight: bold;
 }
 
 .player-name-cell {
@@ -292,7 +294,7 @@ body {
 .points-cell, .points-remaining-cell, .hand-value-cell {
     text-align: center;
     width: 80px;
-    font-size: 0.73rem;
+    font-size: 0.9rem;
     font-weight: bold;
 }
 
@@ -309,6 +311,8 @@ body {
 .status-cell {
     width: 80px;
     text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
 }
 
 .hand-cell {
@@ -407,7 +411,7 @@ body {
 .status-indicator {
     padding: 2px 4px;
     border-radius: 7px;
-    font-size: 0.56rem;
+    font-size: 1.2rem;
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -482,7 +486,7 @@ body {
 .combined-game-section {
     display: flex;
     gap: 20px;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 .deck-area {
@@ -507,8 +511,8 @@ body {
 
 .deck-stack {
     position: relative;
-    width: 80px;
-    height: 112px;
+    width: 30px;
+    height: 42px;
     margin: 10px auto;
     display: flex;
     align-items: flex-end;
