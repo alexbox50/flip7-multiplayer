@@ -669,13 +669,11 @@ class Flip7Game {
                     <span class="player-number">${playerNumber}</span>
                     <span class="player-name">${player.name}</span>
                 </td>
-                <td class="card-count-cell">${player.cards.length}</td>
-                <td class="unique-cell">${handStats.uniqueCount}</td>
-                <td class="hand-value-cell">${handStats.handValue}</td>
                 <td class="points-cell">${pointsDisplay}</td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
                 </td>
+                <td class="hand-value-cell">${handStats.handValue}</td>
                 <td class="hand-cell">
                     <div class="player-hand-display">${handCardsHTML}</div>
                 </td>
@@ -771,13 +769,11 @@ class Flip7Game {
                     <span class="player-number">${playerNumber}</span>
                     <span class="player-name">${player.name}</span>
                 </td>
-                <td class="card-count-cell">${player.cards.length}</td>
-                <td class="unique-cell">${handStats.uniqueCount}</td>
-                <td class="hand-value-cell">${handStats.handValue}</td>
                 <td class="points-cell">${playerPoints}pts</td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
                 </td>
+                <td class="hand-value-cell">${handStats.handValue}</td>
                 <td class="hand-cell">
                     <div class="player-hand-display">${handCardsHTML}</div>
                 </td>
