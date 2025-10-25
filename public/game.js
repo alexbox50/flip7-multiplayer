@@ -716,27 +716,31 @@ class Flip7Game {
         });
 
         playerCards.forEach((card, index) => {
-            const cardElement = document.createElement('div');
-            const cardHTML = this.renderCard(card);
-            cardElement.innerHTML = cardHTML;
-            const actualCard = cardElement.firstChild;
-            
-            if (!actualCard) {
-                console.error('Failed to create card element for:', card);
-                return;
+            try {
+                const cardHTML = this.renderCard(card);
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = cardHTML.trim();
+                const actualCard = tempDiv.firstElementChild;
+                
+                if (!actualCard) {
+                    console.error('Failed to create card element for:', card, 'HTML:', cardHTML);
+                    return;
+                }
+                
+                // Mark duplicates with special styling
+                if (valueCounts[card.value] > 1) {
+                    actualCard.classList.add('duplicate-card');
+                    actualCard.title = `Duplicate value ${card.value} (${valueCounts[card.value]} cards)`;
+                }
+                
+                // Add animation delay for newly drawn cards
+                actualCard.style.animationDelay = `${index * 0.1}s`;
+                actualCard.classList.add('card-appear');
+                
+                this.handCards.appendChild(actualCard);
+            } catch (error) {
+                console.error('Error creating card:', error, card);
             }
-            
-            // Mark duplicates with special styling
-            if (valueCounts[card.value] > 1) {
-                actualCard.classList.add('duplicate-card');
-                actualCard.title = `Duplicate value ${card.value} (${valueCounts[card.value]} cards)`;
-            }
-            
-            // Add animation delay for newly drawn cards
-            actualCard.style.animationDelay = `${index * 0.1}s`;
-            actualCard.classList.add('card-appear');
-            
-            this.handCards.appendChild(actualCard);
         });
     }
 
