@@ -122,6 +122,11 @@ class Flip7Game {
             // Clear any persistent round summary when new round starts
             this.showingRoundSummary = false;
             
+            // Animate cards flying to discard pile if not the first round
+            if (data.roundNumber > 1) {
+                this.animateCardsToDiscard();
+            }
+            
             let message = `Round ${data.roundNumber} started!`;
             if (data.startingPlayer) {
                 message += ` ${data.startingPlayer.playerName} goes first.`;
@@ -148,13 +153,18 @@ class Flip7Game {
         });
 
         this.socket.on('card-drawn', (data) => {
+            // Trigger card animation before updating display
             if (data.playerNumber === this.playerNumber) {
+                this.animateCardToHand();
                 this.showMessage(`You drew: ${data.card.value}`, 'info');
             } else {
                 this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
             }
-            // Force update display after card is drawn
-            this.updateGameDisplay();
+            
+            // Update display after a short delay to let animation start
+            setTimeout(() => {
+                this.updateGameDisplay();
+            }, 50);
         });
 
         this.socket.on('player-stuck', (data) => {
@@ -623,16 +633,6 @@ class Flip7Game {
             const cardElement = document.createElement('div');
             cardElement.className = 'deck-stack-card';
             
-            // Position cards with slight offset for 3D effect
-            const bottomOffset = i * cardThickness;
-            const horizontalOffset = i * 0.5; // Slight horizontal offset
-            
-            cardElement.style.cssText = `
-                bottom: ${bottomOffset}px;
-                left: ${horizontalOffset}px;
-                z-index: ${maxVisualCards - i};
-            `;
-            
             this.deckStack.appendChild(cardElement);
         }
         
@@ -692,18 +692,6 @@ class Flip7Game {
             const cardElement = document.createElement('div');
             cardElement.className = 'deck-stack-card discard-card';
             
-            // Position cards with slight offset for 3D effect
-            const bottomOffset = i * cardThickness;
-            const horizontalOffset = i * 0.5; // Slight horizontal offset
-            
-            cardElement.style.cssText = `
-                bottom: ${bottomOffset}px;
-                left: ${horizontalOffset}px;
-                z-index: ${maxVisualCards - i};
-                background: linear-gradient(135deg, #654321, #8b4513);
-                border-color: #4a2c17;
-            `;
-            
             this.discardStack.appendChild(cardElement);
         }
         
@@ -729,6 +717,118 @@ class Flip7Game {
             `;
             this.discardStack.appendChild(moreIndicator);
         }
+    }
+
+    // Animation function for card flying from deck to hand
+    animateCardToHand() {
+        // Get the top card from the deck
+        const topCard = this.deckStack.querySelector('.deck-stack-card:last-child');
+        if (!topCard) return;
+
+        // Clone the card for animation
+        const flyingCard = topCard.cloneNode(true);
+        flyingCard.classList.remove('deck-stack-card');
+        flyingCard.classList.add('card-flying-to-hand');
+        
+        // Position it exactly over the original card
+        const deckRect = this.deckStack.getBoundingClientRect();
+        
+        flyingCard.style.cssText = `
+            position: fixed;
+            left: ${deckRect.left + 20}px;
+            top: ${deckRect.top + 20}px;
+            width: 60px;
+            height: 84px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            border: 2px solid #333;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        `;
+        
+        document.body.appendChild(flyingCard);
+
+        // Remove the original top card with a slight delay to show animation start
+        setTimeout(() => {
+            if (topCard.parentNode) {
+                topCard.remove();
+            }
+        }, 100);
+        
+        // Remove flying card after animation completes
+        setTimeout(() => {
+            if (flyingCard.parentNode) {
+                flyingCard.remove();
+            }
+        }, 1000);
+    }
+
+    // Animation function for cards flying from hand to discard pile at round end
+    animateCardsToDiscard() {
+        if (!this.gameState || !this.gameState.players[this.playerNumber]) return;
+        
+        const playerCards = this.gameState.players[this.playerNumber].cards || [];
+        if (playerCards.length === 0) return;
+
+        // Animate each card with a slight delay
+        playerCards.forEach((card, index) => {
+            setTimeout(() => {
+                this.createFlyingCardToDiscard(card, index);
+            }, index * 100); // 100ms delay between each card
+        });
+    }
+
+    createFlyingCardToDiscard(card, index) {
+        // Create a flying card element
+        const flyingCard = document.createElement('div');
+        flyingCard.classList.add('card-flying-to-discard');
+        
+        // Get the rendered card appearance
+        const cardHtml = this.renderCard(card);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cardHtml;
+        const renderedCard = tempDiv.firstElementChild;
+        
+        // Position it in the hand area initially  
+        const handRect = this.handCards.getBoundingClientRect();
+        const startLeft = handRect.left + (index * 70);
+        const startTop = handRect.top;
+        
+        flyingCard.style.cssText = `
+            position: fixed;
+            left: ${startLeft}px;
+            top: ${startTop}px;
+            width: 60px;
+            height: 84px;
+            z-index: 1000;
+            background: ${renderedCard ? renderedCard.style.background : 'linear-gradient(145deg, #fff 0%, #f0f0f0 100%)'};
+            border: 2px solid #333;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: ${renderedCard ? renderedCard.style.color : '#333'};
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        `;
+        
+        if (renderedCard) {
+            flyingCard.innerHTML = renderedCard.innerHTML;
+        }
+        
+        document.body.appendChild(flyingCard);
+        
+        // Remove flying card after animation completes
+        setTimeout(() => {
+            if (flyingCard.parentNode) {
+                flyingCard.remove();
+            }
+        }, 1000);
     }
 
     updatePlayerHand() {

@@ -480,12 +480,13 @@ body {
 
 .deck-stack {
     position: relative;
-    width: 80px;
-    height: 120px;
+    width: 100px;
+    height: 140px;
     margin: 10px auto;
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    perspective: 1000px;
 }
 
 .deck-stack-card {
@@ -500,12 +501,133 @@ body {
     justify-content: center;
     font-size: 1.5rem;
     color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    box-shadow: 
+        2px 2px 4px rgba(0,0,0,0.4),
+        0 0 0 1px rgba(255,255,255,0.1);
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease;
+}
+
+/* Isometric stacking effect - each card slightly offset */
+.deck-stack-card:nth-child(1) { 
+    transform: translateX(-1px) translateY(-1px) rotateX(5deg) rotateY(-2deg);
+    z-index: 1;
+}
+
+.deck-stack-card:nth-child(2) { 
+    transform: translateX(-2px) translateY(-2px) rotateX(5deg) rotateY(-2deg);
+    z-index: 2;
+}
+
+.deck-stack-card:nth-child(3) { 
+    transform: translateX(-3px) translateY(-3px) rotateX(5deg) rotateY(-2deg);
+    z-index: 3;
+}
+
+.deck-stack-card:nth-child(4) { 
+    transform: translateX(-4px) translateY(-4px) rotateX(5deg) rotateY(-2deg);
+    z-index: 4;
+}
+
+.deck-stack-card:nth-child(5) { 
+    transform: translateX(-5px) translateY(-5px) rotateX(5deg) rotateY(-2deg);
+    z-index: 5;
+}
+
+.deck-stack-card:nth-child(n+6) { 
+    transform: translateX(-6px) translateY(-6px) rotateX(5deg) rotateY(-2deg);
+    z-index: 6;
+}
+
+/* Different styling for discard pile */
+#discard-stack .deck-stack-card {
+    background: linear-gradient(135deg, #8B4513, #A0522D);
+    transform-style: preserve-3d;
+}
+
+#discard-stack .deck-stack-card:nth-child(1) { 
+    transform: translateX(1px) translateY(-1px) rotateX(5deg) rotateY(2deg);
+    z-index: 1;
+}
+
+#discard-stack .deck-stack-card:nth-child(2) { 
+    transform: translateX(2px) translateY(-2px) rotateX(5deg) rotateY(2deg);
+    z-index: 2;
+}
+
+#discard-stack .deck-stack-card:nth-child(3) { 
+    transform: translateX(3px) translateY(-3px) rotateX(5deg) rotateY(2deg);
+    z-index: 3;
+}
+
+#discard-stack .deck-stack-card:nth-child(4) { 
+    transform: translateX(4px) translateY(-4px) rotateX(5deg) rotateY(2deg);
+    z-index: 4;
+}
+
+#discard-stack .deck-stack-card:nth-child(5) { 
+    transform: translateX(5px) translateY(-5px) rotateX(5deg) rotateY(2deg);
+    z-index: 5;
+}
+
+#discard-stack .deck-stack-card:nth-child(n+6) { 
+    transform: translateX(6px) translateY(-6px) rotateX(5deg) rotateY(2deg);
+    z-index: 6;
 }
 
 .deck-stack-card::before {
     content: '🂠';
     font-size: 2rem;
+}
+
+/* Animation for cards moving from pile to hand */
+@keyframes cardToHand {
+    0% {
+        transform: translateX(0) translateY(0) scale(1) rotateX(5deg) rotateY(-2deg);
+        opacity: 1;
+    }
+    25% {
+        transform: translateX(150px) translateY(-80px) scale(1.1) rotateZ(15deg);
+        opacity: 0.9;
+    }
+    75% {
+        transform: translateX(300px) translateY(-40px) scale(0.8) rotateZ(-10deg);
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateX(450px) translateY(20px) scale(0.6) rotateZ(0deg);
+        opacity: 0;
+    }
+}
+
+/* Animation for cards moving from hand to discard pile */
+@keyframes cardToDiscard {
+    0% {
+        transform: translateX(0) translateY(0) scale(0.8) rotateZ(0deg);
+        opacity: 0.8;
+    }
+    25% {
+        transform: translateX(-100px) translateY(-60px) scale(1) rotateZ(-15deg);
+        opacity: 0.9;
+    }
+    75% {
+        transform: translateX(-200px) translateY(-30px) scale(1.1) rotateZ(10deg);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(-300px) translateY(0) scale(1) rotateX(5deg) rotateY(2deg) rotateZ(0deg);
+        opacity: 0.6;
+    }
+}
+
+.card-flying-to-hand {
+    animation: cardToHand 0.8s ease-in-out forwards;
+    pointer-events: none;
+}
+
+.card-flying-to-discard {
+    animation: cardToDiscard 0.8s ease-in-out forwards;
+    pointer-events: none;
 }
 
 #deck-count {
