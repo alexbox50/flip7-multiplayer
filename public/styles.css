@@ -286,7 +286,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
-    max-height: 60px;
+    max-height: 125px;
     overflow-y: auto;
 }
 
@@ -301,12 +301,12 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 34px;
+    width: 80px;
+    height: 112px;
     background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid #333;
-    border-radius: 3px;
-    font-size: 0.7rem;
+    border: 2px solid #333;
+    border-radius: 8px;
+    font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
     transition: transform 0.2s ease;
@@ -332,12 +332,12 @@ body {
 }
 
 .mini-card-value {
-    font-size: 0.75rem;
+    font-size: 1.25rem;
     line-height: 1;
 }
 
 .mini-card-suit {
-    font-size: 0.6rem;
+    font-size: 1rem;
     line-height: 1;
 }
 
@@ -480,8 +480,8 @@ body {
 
 .deck-stack {
     position: relative;
-    width: 100px;
-    height: 140px;
+    width: 80px;
+    height: 112px;
     margin: 10px auto;
     display: flex;
     align-items: flex-end;
@@ -491,18 +491,18 @@ body {
 
 .deck-stack-card {
     position: absolute;
-    width: 60px;
-    height: 84px;
+    width: 80px;
+    height: 112px;
     background: linear-gradient(135deg, #1e3c72, #2a5298);
     border: 2px solid #333;
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 2rem;
     color: white;
     box-shadow: 
-        2px 2px 4px rgba(0,0,0,0.4),
+        2px 2px 6px rgba(0,0,0,0.4),
         0 0 0 1px rgba(255,255,255,0.1);
     transform-style: preserve-3d;
     transition: transform 0.3s ease;
@@ -712,18 +712,18 @@ body {
 /* Cards */
 .card {
     display: inline-block;
-    width: 80px;
-    height: 112px;
+    width: 160px;
+    height: 224px;
     background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-    border: 2px solid #333;
-    border-radius: 8px;
-    margin: 5px;
+    border: 4px solid #333;
+    border-radius: 16px;
+    margin: 10px;
     position: relative;
     cursor: pointer;
     transition: all 0.3s ease;
     color: #333;
     font-weight: bold;
-    box-shadow: 2px 2px 6px rgba(0,0,0,0.15);
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.15);
 }
 
 .card:hover {
@@ -925,30 +925,30 @@ body {
 }
 
 .card-value-large {
-    font-size: 2rem;
+    font-size: 4rem;
     font-weight: bold;
     line-height: 1;
 }
 
 .card-suit-large {
-    font-size: 1.2rem;
-    margin-top: 2px;
+    font-size: 2.4rem;
+    margin-top: 4px;
 }
 
 .card-corner {
     position: absolute;
-    font-size: 0.8rem;
+    font-size: 1.6rem;
     line-height: 1;
 }
 
 .card-corner-top {
-    top: 8px;
-    left: 8px;
+    top: 16px;
+    left: 16px;
 }
 
 .card-corner-bottom {
-    bottom: 8px;
-    right: 8px;
+    bottom: 16px;
+    right: 16px;
     transform: rotate(180deg);
 }
 
@@ -956,15 +956,15 @@ body {
     position: relative;
     top: 0;
     left: 0;
-    font-size: 0.9rem;
-    margin-bottom: 2px;
+    font-size: 1.8rem;
+    margin-bottom: 4px;
 }
 
 .card-corner .card-suit {
     position: relative;
     top: 0;
     left: 0;
-    font-size: 0.8rem;
+    font-size: 1.6rem;
 }
 
 /* Card color classes */
@@ -1078,9 +1078,9 @@ body {
     }
     
     .mini-card {
-        width: 18px;
-        height: 24px;
-        font-size: 0.6rem;
+        width: 80px;
+        height: 112px;
+        font-size: 1rem;
     }
     
     .combined-game-section {
@@ -1103,20 +1103,18 @@ body {
     }
     
     .card {
-        width: 60px;
-        height: 84px;
+        width: 160px;
+        height: 224px;
     }
-    
+
     .card-rank,
     .card-suit {
-        font-size: 0.8rem;
+        font-size: 1.6rem;
     }
-    
+
     .card-center {
-        font-size: 1.5rem;
-    }
-    
-    .admin-buttons {
+        font-size: 4rem;
+    }    .admin-buttons {
         flex-direction: column;
     }
 }
