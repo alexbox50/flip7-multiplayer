@@ -36,7 +36,7 @@ class Flip7Game {
         this.cardsLeft = document.getElementById('cards-left');
         this.drawBtn = document.getElementById('draw-btn');
         this.stickBtn = document.getElementById('stick-btn');
-        this.handCards = document.getElementById('hand-cards');
+        // handCards element removed - cards now displayed in main players table
         this.currentTurn = document.getElementById('current-turn');
         this.gameMessage = document.getElementById('game-message');
         this.leaderInfo = document.getElementById('leader-info');
@@ -403,7 +403,7 @@ class Flip7Game {
         if (!this.gameState) {
             // Clear display when no game state
             this.playersList.innerHTML = '';
-            this.handCards.innerHTML = '';
+            // handCards element no longer exists - cards shown in players table
             this.currentTurn.innerHTML = 'No game in progress';
             this.cardsLeft.textContent = '0';
             this.deckCount.textContent = '0 cards';
@@ -723,23 +723,27 @@ class Flip7Game {
     animateCardToHand() {
         // Get the top card from the deck
         const topCard = this.deckStack.querySelector('.deck-stack-card:last-child');
-        if (!topCard) return;
+        if (!topCard) {
+            console.log('No top card found for animation');
+            return;
+        }
 
         // Clone the card for animation
         const flyingCard = topCard.cloneNode(true);
         flyingCard.classList.remove('deck-stack-card');
         flyingCard.classList.add('card-flying-to-hand');
         
-        // Position it exactly over the original card
+        // Get deck position for starting point
         const deckRect = this.deckStack.getBoundingClientRect();
         
+        // Style the flying card
         flyingCard.style.cssText = `
             position: fixed;
-            left: ${deckRect.left + 20}px;
-            top: ${deckRect.top + 20}px;
+            left: ${deckRect.left + 10}px;
+            top: ${deckRect.top + 10}px;
             width: 60px;
             height: 84px;
-            z-index: 1000;
+            z-index: 2000;
             background: linear-gradient(135deg, #1e3c72, #2a5298);
             border: 2px solid #333;
             border-radius: 6px;
@@ -748,24 +752,30 @@ class Flip7Game {
             justify-content: center;
             font-size: 1.5rem;
             color: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            transform: rotateX(5deg) rotateY(-2deg);
         `;
         
+        // Add card back symbol
+        flyingCard.innerHTML = '<span style="font-size: 2rem;">🂠</span>';
+        
         document.body.appendChild(flyingCard);
+        console.log('Flying card created and added to DOM');
 
-        // Remove the original top card with a slight delay to show animation start
+        // Remove the original top card immediately to show deck reduction
         setTimeout(() => {
             if (topCard.parentNode) {
                 topCard.remove();
             }
-        }, 100);
+        }, 50);
         
         // Remove flying card after animation completes
         setTimeout(() => {
             if (flyingCard.parentNode) {
                 flyingCard.remove();
+                console.log('Flying card animation completed and removed');
             }
-        }, 1000);
+        }, 1200);
     }
 
     // Animation function for cards flying from hand to discard pile at round end
@@ -794,10 +804,13 @@ class Flip7Game {
         tempDiv.innerHTML = cardHtml;
         const renderedCard = tempDiv.firstElementChild;
         
-        // Position it in the hand area initially  
-        const handRect = this.handCards.getBoundingClientRect();
-        const startLeft = handRect.left + (index * 70);
-        const startTop = handRect.top;
+        // Position it starting from the player's row in the table
+        const playersTable = document.getElementById('players-table');
+        if (!playersTable) return;
+        
+        const tableRect = playersTable.getBoundingClientRect();
+        const startLeft = tableRect.right - 200 + (index * 20); // Start from the hand column area
+        const startTop = tableRect.top + 100; // Approximate row height
         
         flyingCard.style.cssText = `
             position: fixed;
@@ -832,61 +845,14 @@ class Flip7Game {
     }
 
     updatePlayerHand() {
-        if (!this.handCards) {
-            console.error('handCards element not found');
+        // Hand display is now integrated into the players table
+        // This function is kept for compatibility but no longer manages a separate hand display
+        if (!this.gameState || !this.gameState.players[this.playerNumber]) {
             return;
         }
         
-        this.handCards.innerHTML = '';
-        
-        if (!this.gameState.players[this.playerNumber]) {
-            // No player data - reset displays
-            if (this.uniqueCount) this.uniqueCount.textContent = '0';
-            if (this.totalValue) this.totalValue.textContent = '0';
-            return;
-        }
-        
-        const playerCards = this.gameState.players[this.playerNumber].cards || [];
-        
-        // Calculate unique values and total
-        const uniqueValues = new Set(playerCards.map(card => card.value));
-        const totalValue = playerCards.reduce((sum, card) => sum + card.value, 0);
-        
-        // Unique count and hand value are now displayed in the players table
-
-        // Count occurrences of each value to identify duplicates
-        const valueCounts = {};
-        playerCards.forEach(card => {
-            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
-        });
-
-        playerCards.forEach((card, index) => {
-            try {
-                const cardHTML = this.renderCard(card);
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = cardHTML.trim();
-                const actualCard = tempDiv.firstElementChild;
-                
-                if (!actualCard) {
-                    console.error('Failed to create card element for:', card, 'HTML:', cardHTML);
-                    return;
-                }
-                
-                // Mark duplicates with special styling
-                if (valueCounts[card.value] > 1) {
-                    actualCard.classList.add('duplicate-card');
-                    actualCard.title = `Duplicate value ${card.value} (${valueCounts[card.value]} cards)`;
-                }
-                
-                // Add animation delay for newly drawn cards
-                actualCard.style.animationDelay = `${index * 0.1}s`;
-                actualCard.classList.add('card-appear');
-                
-                this.handCards.appendChild(actualCard);
-            } catch (error) {
-                console.error('Error creating card:', error, card);
-            }
-        });
+        // The hand information is now displayed in the main players table
+        // All hand rendering is handled by updatePlayersList()
     }
 
     updateTurnIndicator() {
@@ -1028,16 +994,20 @@ class Flip7Game {
         // Add confetti effect
         this.createConfetti(celebration.querySelector('.confetti-container'));
         
-        // Add special glow to player's cards
-        if (data.playerNumber === this.playerNumber && this.handCards) {
-            this.handCards.classList.add('flip7-glow');
+        // Add special glow to player's row in table instead of handCards
+        if (data.playerNumber === this.playerNumber) {
+            const playerRow = document.querySelector(`#players-table tr.current-turn`);
+            if (playerRow) {
+                playerRow.classList.add('flip7-glow');
+            }
         }
         
         // Remove celebration after 4 seconds
         setTimeout(() => {
             celebration.remove();
-            if (this.handCards) {
-                this.handCards.classList.remove('flip7-glow');
+            const playerRow = document.querySelector(`#players-table tr.flip7-glow`);
+            if (playerRow) {
+                playerRow.classList.remove('flip7-glow');
             }
         }, 4000);
     }
