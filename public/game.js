@@ -900,18 +900,43 @@ class Flip7Game {
             return;
         }
         
+        // Get the top card from the discard pile to show face-up
+        const topCard = this.gameState.discardPile && this.gameState.discardPile.length > 0 
+            ? this.gameState.discardPile[this.gameState.discardPile.length - 1]
+            : null;
+        
         // Calculate how many visual cards to show (max 10 for performance)
         const maxVisualCards = 10;
         const visualCardCount = Math.min(cardCount, maxVisualCards);
         
-        // Calculate spacing based on available height and number of cards
-        const maxHeight = 100; // Available height in pixels
-        const cardThickness = Math.min(3, maxHeight / Math.max(visualCardCount, 1));
-        
-        // Create visual cards (different style for discard pile)
+        // Create visual cards for the stack (face down except the top one)
         for (let i = 0; i < visualCardCount; i++) {
             const cardElement = document.createElement('div');
-            cardElement.className = 'deck-stack-card discard-card';
+            
+            if (i === visualCardCount - 1 && topCard) {
+                // Top card - show face up
+                cardElement.className = 'deck-stack-card face-up-discard-card';
+                const colorClass = this.getCardColorClass(topCard.value);
+                const suitSymbol = this.getCardSuit(topCard.value);
+                
+                cardElement.style.cssText = `
+                    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+                    color: ${colorClass === 'red-card' ? '#e74c3c' : '#2c3e50'};
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    border: 1px solid #333;
+                `;
+                
+                cardElement.innerHTML = `
+                    <div style="font-size: 0.15rem; line-height: 1; font-weight: bold;">${topCard.value}</div>
+                    <div style="font-size: 0.1rem; line-height: 1;">${suitSymbol}</div>
+                `;
+            } else {
+                // Face down cards
+                cardElement.className = 'deck-stack-card';
+            }
             
             this.discardStack.appendChild(cardElement);
         }

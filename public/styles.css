@@ -204,6 +204,14 @@ body {
     border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Center-align specific column headers */
+.players-table th:nth-child(4), /* Points Scored */
+.players-table th:nth-child(5), /* Points Needed */
+.players-table th:nth-child(6), /* Status */
+.players-table th:nth-child(7)  /* Current Hand Points */ {
+    text-align: center;
+}
+
 .players-table td {
     padding: 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -274,7 +282,14 @@ body {
     font-size: 0.465rem;
 }
 
-.card-count-cell, .unique-cell, .hand-value-cell, .points-cell, .points-remaining-cell {
+.card-count-cell, .unique-cell {
+    text-align: center;
+    width: 80px;
+    font-size: 0.73rem;
+    font-weight: bold;
+}
+
+.points-cell, .points-remaining-cell, .hand-value-cell {
     text-align: center;
     width: 80px;
     font-size: 0.73rem;
@@ -293,6 +308,7 @@ body {
 
 .status-cell {
     width: 80px;
+    text-align: center;
 }
 
 .hand-cell {
@@ -327,12 +343,6 @@ body {
     font-weight: bold;
     cursor: pointer;
     transition: transform 0.2s ease;
-}
-
-.mini-card:hover {
-    transform: scale(1.2);
-    z-index: 10;
-    position: relative;
 }
 
 .mini-card.red-card {
@@ -597,6 +607,15 @@ body {
     font-size: 2rem;
 }
 
+/* Face-up discard card styling */
+.face-up-discard-card {
+    font-size: 0.2rem !important;
+}
+
+.face-up-discard-card::before {
+    display: none; /* Hide the card back symbol */
+}
+
 /* Animation for cards moving from pile to hand */
 @keyframes cardToHand {
     0% {
@@ -746,11 +765,6 @@ body {
     color: #333;
     font-weight: bold;
     box-shadow: 4px 4px 12px rgba(0,0,0,0.15);
-}
-
-.card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
 }
 
 .card-appear {
