@@ -58,6 +58,12 @@ function createDeck() {
         deck.push({ value: 'second-chance', id: `second-chance-${count}` });
     }
     
+    // Add 5 Bonus Points cards (+2, +4, +6, +8, +10)
+    const bonusValues = [2, 4, 6, 8, 10];
+    bonusValues.forEach((value, index) => {
+        deck.push({ value: 'bonus', bonusPoints: value, id: `bonus-${value}` });
+    });
+    
     return shuffleDeck(deck);
 }
 
@@ -164,6 +170,8 @@ function calculateHandValue(playerNumber) {
         if (card.value === 'freeze' || card.value === 'second-chance') return sum;
         // Ignored duplicate cards don't contribute to hand value
         if (card.ignored) return sum;
+        // Bonus Points cards add their bonus value to hand total
+        if (card.value === 'bonus') return sum + card.bonusPoints;
         return sum + card.value;
     }, 0);
 }
@@ -496,6 +504,21 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Bonus Points card
+                if (drawnCard.value === 'bonus') {
+                    // Bonus Points cards are kept in hand and turn ends normally
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: true
+                    });
+                    
+                    nextPlayer();
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 io.to('game').emit('card-drawn', {
                     playerNumber,
                     playerName: player.name,
@@ -561,11 +584,32 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Bonus Points card
+                if (drawnCard.value === 'bonus') {
+                    // Bonus Points cards are kept in hand and turn ends
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: false
+                    });
+                    
+                    // Check if round should end
+                    if (checkRoundEnd()) {
+                        endRound();
+                    } else {
+                        nextPlayer();
+                    }
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 // Check for bust (same value already in hand)
-                // Exclude freeze cards, second chance cards, and ignored cards from value calculations
+                // Exclude freeze cards, second chance cards, bonus cards, and ignored cards from value calculations
                 const cardValues = player.cards.filter(c => 
                     c.value !== 'freeze' && 
                     c.value !== 'second-chance' && 
+                    c.value !== 'bonus' &&
                     !c.ignored
                 ).map(c => c.value);
                 const uniqueValues = new Set(cardValues);

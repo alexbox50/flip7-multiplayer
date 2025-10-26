@@ -595,14 +595,26 @@ class Flip7Game {
             return { uniqueCount: 0, handValue: 0 };
         }
         
-        // Filter out freeze cards, second chance cards, and ignored cards for value calculations
+        // Filter out freeze cards, second chance cards, bonus cards, and ignored cards for duplicate checking
         const numericCards = cards.filter(card => 
             card.value !== 'freeze' && 
             card.value !== 'second-chance' && 
+            card.value !== 'bonus' &&
             !card.ignored
         );
         const uniqueValues = new Set(numericCards.map(card => card.value));
-        const totalValue = numericCards.reduce((sum, card) => sum + card.value, 0);
+        
+        // Calculate total hand value including bonus points
+        let totalValue = 0;
+        cards.forEach(card => {
+            if (card.value !== 'freeze' && card.value !== 'second-chance' && !card.ignored) {
+                if (card.value === 'bonus') {
+                    totalValue += card.bonusPoints;
+                } else {
+                    totalValue += card.value;
+                }
+            }
+        });
         
         return {
             uniqueCount: uniqueValues.size,
@@ -945,6 +957,7 @@ class Flip7Game {
                 let displayValue = topCard.value;
                 if (topCard.value === 'freeze') displayValue = '❄';
                 else if (topCard.value === 'second-chance') displayValue = '🔄';
+                else if (topCard.value === 'bonus') displayValue = `+${topCard.bonusPoints}`;
                 
                 // Different styling for special cards
                 let cardColor = '#2c3e50'; // default black
@@ -958,6 +971,9 @@ class Flip7Game {
                 } else if (colorClass === 'second-chance-card') {
                     cardColor = '#28a745';
                     cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+                } else if (colorClass === 'bonus-card') {
+                    cardColor = '#8A2BE2';
+                    cardBackground = 'linear-gradient(145deg, #F0E6FF 0%, #E6D7FF 100%)';
                 }
                 
                 cardElement.style.cssText = `
@@ -1122,6 +1138,7 @@ class Flip7Game {
             let displayValue = drawnCard.value;
             if (drawnCard.value === 'freeze') displayValue = '❄';
             else if (drawnCard.value === 'second-chance') displayValue = '🔄';
+            else if (drawnCard.value === 'bonus') displayValue = `+${drawnCard.bonusPoints}`;
             
             // Different styling for special cards
             let cardColor = '#2c3e50';
@@ -1135,6 +1152,9 @@ class Flip7Game {
             } else if (colorClass === 'second-chance-card') {
                 cardColor = '#28a745';
                 cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+            } else if (colorClass === 'bonus-card') {
+                cardColor = '#8A2BE2';
+                cardBackground = 'linear-gradient(145deg, #F0E6FF 0%, #E6D7FF 100%)';
             }
             
             flyingCard.style.background = cardBackground;
@@ -1388,18 +1408,24 @@ class Flip7Game {
         const colorClass = this.getCardColorClass(card.value);
         const suitSymbol = this.getCardSuit(card.value);
         
+        // Determine display value for the card
+        let displayValue = card.value;
+        if (card.value === 'bonus') {
+            displayValue = `+${card.bonusPoints}`;
+        }
+        
         return `
             <div class="card ${colorClass}" data-value="${card.value}">
                 <div class="card-corner card-corner-top">
-                    <div class="card-rank">${card.value}</div>
+                    <div class="card-rank">${displayValue}</div>
                     <div class="card-suit">${suitSymbol}</div>
                 </div>
                 <div class="card-center">
-                    <div class="card-value-large">${card.value}</div>
+                    <div class="card-value-large">${displayValue}</div>
                     <div class="card-suit-large">${suitSymbol}</div>
                 </div>
                 <div class="card-corner card-corner-bottom">
-                    <div class="card-rank">${card.value}</div>
+                    <div class="card-rank">${displayValue}</div>
                     <div class="card-suit">${suitSymbol}</div>
                 </div>
             </div>
@@ -1410,6 +1436,7 @@ class Flip7Game {
         // Handle special cards
         if (value === 'freeze') return 'freeze-card';
         if (value === 'second-chance') return 'second-chance-card';
+        if (value === 'bonus') return 'bonus-card';
         
         // Alternate colors for visual variety while maintaining game logic
         if (value <= 3) return 'red-card';
@@ -1422,6 +1449,7 @@ class Flip7Game {
         // Handle special cards
         if (value === 'freeze') return '🧊'; // Ice cube symbol for freeze cards
         if (value === 'second-chance') return '🔄'; // Refresh symbol for second chance cards
+        if (value === 'bonus') return '💎'; // Diamond symbol for bonus points cards
         
         // Assign suit symbols based on value for visual variety
         if (value <= 3) return '♥'; // Hearts (red)

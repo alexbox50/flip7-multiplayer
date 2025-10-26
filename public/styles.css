@@ -379,6 +379,13 @@ body {
     font-weight: bold;
 }
 
+.mini-card.bonus-card {
+    color: #8A2BE2;
+    background: linear-gradient(135deg, #F0E6FF, #E6D7FF);
+    border-color: #9370DB;
+    font-weight: bold;
+}
+
 .mini-card.ignored-card {
     color: #6c757d;
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
@@ -1067,6 +1074,13 @@ body {
     color: #28a745;
     background: linear-gradient(135deg, #e8f5e8, #d4edda);
     border: 2px solid #28a745;
+    font-weight: bold;
+}
+
+.bonus-card {
+    color: #8A2BE2;
+    background: linear-gradient(135deg, #F0E6FF, #E6D7FF);
+    border: 2px solid #9370DB;
     font-weight: bold;
 }
 
