@@ -773,11 +773,14 @@ io.on('connection', (socket) => {
         
         // Emit freeze card discard animation event first
         if (freezeCard) {
+            console.log(`Emitting freeze-card-discarded for player ${playerNumber}:`, freezeCard);
             io.to('game').emit('freeze-card-discarded', {
                 playerNumber: playerNumber,
                 playerName: gameState.players[playerNumber].name,
                 freezeCard: freezeCard
             });
+        } else {
+            console.log(`No freeze card found for player ${playerNumber}`);
         }
         
         // Then emit the freeze effect and update game state after animation

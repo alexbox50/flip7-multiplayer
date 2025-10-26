@@ -1741,15 +1741,19 @@ class Flip7Game {
     }
 
     animateCardToDiscard(card, playerNumber, onComplete) {
-        // Find the player's hand element
-        const playerRow = document.querySelector(`tr[data-player-number="${playerNumber}"]`);
-        if (!playerRow) {
-            onComplete();
-            return;
+        // Find the player's hand element using the same method as other animations
+        let handElement = null;
+        const allRows = document.querySelectorAll('#players-table tr.player-row');
+        for (const row of allRows) {
+            const playerNumElement = row.querySelector('.player-number');
+            if (playerNumElement && playerNumElement.textContent.trim() === playerNumber.toString()) {
+                handElement = row.querySelector('.player-hand-display');
+                break;
+            }
         }
 
-        const handElement = playerRow.querySelector('.player-hand');
         if (!handElement) {
+            console.log(`No hand display found for player ${playerNumber}`);
             onComplete();
             return;
         }
