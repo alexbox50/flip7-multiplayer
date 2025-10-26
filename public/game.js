@@ -1411,7 +1411,7 @@ class Flip7Game {
         // Determine display value for the card
         let displayValue = card.value;
         if (card.value === 'bonus') {
-            displayValue = card.bonusPoints;
+            displayValue = card.bonusPoints || '?';
         } else if (card.value === 'second-chance') {
             displayValue = 'Second Chance';
         }
