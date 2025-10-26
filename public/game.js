@@ -957,7 +957,7 @@ class Flip7Game {
                 let displayValue = topCard.value;
                 if (topCard.value === 'freeze') displayValue = '❄';
                 else if (topCard.value === 'second-chance') displayValue = '🔄';
-                else if (topCard.value === 'bonus') displayValue = `+${topCard.bonusPoints}`;
+                else if (topCard.value === 'bonus') displayValue = topCard.bonusPoints;
                 
                 // Different styling for special cards
                 let cardColor = '#2c3e50'; // default black
@@ -972,8 +972,8 @@ class Flip7Game {
                     cardColor = '#28a745';
                     cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
                 } else if (colorClass === 'bonus-card') {
-                    cardColor = '#8A2BE2';
-                    cardBackground = 'linear-gradient(145deg, #F0E6FF 0%, #E6D7FF 100%)';
+                    cardColor = '#007BFF';
+                    cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
                 }
                 
                 cardElement.style.cssText = `
@@ -1138,7 +1138,7 @@ class Flip7Game {
             let displayValue = drawnCard.value;
             if (drawnCard.value === 'freeze') displayValue = '❄';
             else if (drawnCard.value === 'second-chance') displayValue = '🔄';
-            else if (drawnCard.value === 'bonus') displayValue = `+${drawnCard.bonusPoints}`;
+            else if (drawnCard.value === 'bonus') displayValue = drawnCard.bonusPoints;
             
             // Different styling for special cards
             let cardColor = '#2c3e50';
@@ -1153,8 +1153,8 @@ class Flip7Game {
                 cardColor = '#28a745';
                 cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
             } else if (colorClass === 'bonus-card') {
-                cardColor = '#8A2BE2';
-                cardBackground = 'linear-gradient(145deg, #F0E6FF 0%, #E6D7FF 100%)';
+                cardColor = '#007BFF';
+                cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
             }
             
             flyingCard.style.background = cardBackground;
@@ -1411,7 +1411,7 @@ class Flip7Game {
         // Determine display value for the card
         let displayValue = card.value;
         if (card.value === 'bonus') {
-            displayValue = `+${card.bonusPoints}`;
+            displayValue = card.bonusPoints;
         }
         
         return `
@@ -1449,7 +1449,7 @@ class Flip7Game {
         // Handle special cards
         if (value === 'freeze') return '🧊'; // Ice cube symbol for freeze cards
         if (value === 'second-chance') return '🔄'; // Refresh symbol for second chance cards
-        if (value === 'bonus') return '💎'; // Diamond symbol for bonus points cards
+        if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
         
         // Assign suit symbols based on value for visual variety
         if (value <= 3) return '♥'; // Hearts (red)
