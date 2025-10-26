@@ -1597,6 +1597,7 @@ class Flip7Game {
             let displayValue = card.value;
             if (card.value === 'freeze') displayValue = '❄';
             else if (card.value === 'second-chance') displayValue = '🔄';
+            else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
             
             let cardTitle = '';
             let additionalClasses = '';
@@ -1610,6 +1611,8 @@ class Flip7Game {
                 }
             } else if (card.value === 'second-chance') {
                 cardTitle = 'Second Chance Card 🔄';
+            } else if (card.value === 'bonus') {
+                cardTitle = `Bonus Points Card +${card.bonusPoints || '?'}`;
             } else if (card.ignored) {
                 cardTitle = `Duplicate ${card.value} (Ignored by Second Chance)`;
                 additionalClasses = 'ignored-card';
