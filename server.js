@@ -753,13 +753,14 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Remove freeze card from hand and add to discard pile
+        // Find the freeze card but don't remove it yet (wait for animation)
         const freezePlayer = gameState.players[playerNumber];
         const freezeCardIndex = freezePlayer.cards.findIndex(card => card.value === 'freeze' && !card.used);
         let freezeCard = null;
         if (freezeCardIndex !== -1) {
-            freezeCard = freezePlayer.cards.splice(freezeCardIndex, 1)[0];
-            gameState.discardPile.push(freezeCard);
+            freezeCard = freezePlayer.cards[freezeCardIndex];
+            // Mark it as used but keep it in hand during animation
+            freezeCard.used = true;
         }
         
         // Apply freeze effect - force target to stick
@@ -779,8 +780,14 @@ io.on('connection', (socket) => {
             });
         }
         
-        // Then emit the freeze effect after a delay to allow animation
+        // Then emit the freeze effect and update game state after animation
         setTimeout(() => {
+            // Now actually remove the freeze card from hand and add to discard pile
+            if (freezeCard && freezeCardIndex !== -1) {
+                freezePlayer.cards.splice(freezeCardIndex, 1);
+                gameState.discardPile.push(freezeCard);
+            }
+            
             io.to('game').emit('freeze-effect-applied', {
                 freezePlayerNumber: playerNumber,
                 freezePlayerName: gameState.players[playerNumber].name,

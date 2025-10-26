@@ -1595,8 +1595,17 @@ class Flip7Game {
         if (this.animatingCard && 
             this.animatingCard.playerNumber === parseInt(playerNumber) && 
             cards.length > 0) {
-            // Remove the last card (most recently drawn) during animation
-            filteredCards = cards.slice(0, -1);
+            
+            if (this.animatingCard.type === 'freeze-discard') {
+                // Remove the specific freeze card during freeze discard animation
+                filteredCards = cards.filter(card => 
+                    !(card.value === 'freeze' && card.id === this.animatingCard.card.id)
+                );
+            } else {
+                // Remove the last card (most recently drawn) during normal draw animation
+                filteredCards = cards.slice(0, -1);
+            }
+            
             if (filteredCards.length === 0) {
                 return '';
             }
@@ -1716,10 +1725,18 @@ class Flip7Game {
     }
 
     animateFreezeCardToDiscard(playerNumber, freezeCard) {
+        // Set animation state to prevent game state updates from interfering
+        this.animatingCard = {
+            playerNumber: playerNumber,
+            card: freezeCard,
+            type: 'freeze-discard'
+        };
+        
         // Animate the freeze card from player's hand to discard pile
         this.animateCardToDiscard(freezeCard, playerNumber, () => {
-            // Update the game display after animation completes
-            this.updateGameDisplay();
+            // Clear animation state
+            this.animatingCard = null;
+            // Update will happen when server sends updated game state
         });
     }
 
