@@ -1383,6 +1383,10 @@ class Flip7Game {
         const isMyTurn = this.gameState.currentPlayer === this.playerNumber;
         const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress;
         
+        // Check if this player drew a freeze card and must select a target
+        const mustSelectFreezeTarget = this.gameState.freezeCardActive && 
+                                      this.gameState.freezeCardPlayer === this.playerNumber;
+        
         // Always keep consistent button text
         this.drawBtn.textContent = 'Twist';
         this.stickBtn.textContent = 'Stick';
@@ -1391,6 +1395,8 @@ class Flip7Game {
         if (this.turnStatus) {
             if (!this.gameState.roundInProgress) {
                 this.turnStatus.textContent = "Waiting for game to start...";
+            } else if (mustSelectFreezeTarget) {
+                this.turnStatus.textContent = "Choose a player to freeze with your Freeze card!";
             } else if (isMyTurn) {
                 this.turnStatus.textContent = "It's your turn!";
             } else {
@@ -1398,9 +1404,14 @@ class Flip7Game {
             }
         }
         
-        // Set enabled/disabled state
-        this.drawBtn.disabled = !canAct;
-        this.stickBtn.disabled = !canAct || (player && !player.hasDrawnFirstCard);
+        // Set enabled/disabled state - disable buttons if must select freeze target
+        this.drawBtn.disabled = !canAct || mustSelectFreezeTarget;
+        this.stickBtn.disabled = !canAct || mustSelectFreezeTarget || (player && !player.hasDrawnFirstCard);
+        
+        // Hide freeze target selection if it's no longer needed
+        if (!this.gameState.freezeCardActive || this.gameState.freezeCardPlayer !== this.playerNumber) {
+            this.hideFreezeTargetSelection();
+        }
     }
 
     renderCard(card) {

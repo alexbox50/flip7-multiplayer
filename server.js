@@ -449,6 +449,12 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Prevent actions if player has drawn a freeze card and must select a target
+        if (gameState.freezeCardActive && gameState.freezeCardPlayer === parseInt(playerNumber)) {
+            socket.emit('invalid-move', { message: 'You must select a target for your Freeze card first' });
+            return;
+        }
+
         if (action === 'draw') {
             // First turn: must draw
             if (!player.hasDrawnFirstCard) {
