@@ -1412,6 +1412,28 @@ class Flip7Game {
         let displayValue = card.value;
         if (card.value === 'bonus') {
             displayValue = card.bonusPoints;
+        } else if (card.value === 'second-chance') {
+            displayValue = 'Second Chance';
+        }
+        
+        // Special rendering for Second Chance cards to show only one emoji in center
+        if (card.value === 'second-chance') {
+            return `
+                <div class="card ${colorClass}" data-value="${card.value}">
+                    <div class="card-corner card-corner-top">
+                        <div class="card-rank">2nd</div>
+                        <div class="card-suit"> </div>
+                    </div>
+                    <div class="card-center">
+                        <div class="card-value-large">🔄</div>
+                        <div class="second-chance-text">Second Chance</div>
+                    </div>
+                    <div class="card-corner card-corner-bottom">
+                        <div class="card-rank">Chance</div>
+                        <div class="card-suit"> </div>
+                    </div>
+                </div>
+            `;
         }
         
         return `

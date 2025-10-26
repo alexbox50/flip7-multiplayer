@@ -1077,6 +1077,12 @@ body {
     font-weight: bold;
 }
 
+.second-chance-text {
+    font-size: 0.7em;
+    margin-top: 2px;
+    font-weight: bold;
+}
+
 .bonus-card {
     color: #007BFF;
     background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
