@@ -753,11 +753,13 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Mark freeze card as used (but keep it in hand)
+        // Remove freeze card from hand and add to discard pile
         const freezePlayer = gameState.players[playerNumber];
         const freezeCardIndex = freezePlayer.cards.findIndex(card => card.value === 'freeze' && !card.used);
+        let freezeCard = null;
         if (freezeCardIndex !== -1) {
-            freezePlayer.cards[freezeCardIndex].used = true;
+            freezeCard = freezePlayer.cards.splice(freezeCardIndex, 1)[0];
+            gameState.discardPile.push(freezeCard);
         }
         
         // Apply freeze effect - force target to stick
@@ -768,13 +770,28 @@ io.on('connection', (socket) => {
         gameState.freezeCardActive = false;
         gameState.freezeCardPlayer = null;
         
-        io.to('game').emit('freeze-effect-applied', {
-            freezePlayerNumber: playerNumber,
-            freezePlayerName: gameState.players[playerNumber].name,
-            targetPlayerNumber: targetPlayerNumber,
-            targetPlayerName: targetPlayer.name,
-            targetHandValue: targetPlayer.roundPoints
-        });
+        // Emit freeze card discard animation event first
+        if (freezeCard) {
+            io.to('game').emit('freeze-card-discarded', {
+                playerNumber: playerNumber,
+                playerName: gameState.players[playerNumber].name,
+                freezeCard: freezeCard
+            });
+        }
+        
+        // Then emit the freeze effect after a delay to allow animation
+        setTimeout(() => {
+            io.to('game').emit('freeze-effect-applied', {
+                freezePlayerNumber: playerNumber,
+                freezePlayerName: gameState.players[playerNumber].name,
+                targetPlayerNumber: targetPlayerNumber,
+                targetPlayerName: targetPlayer.name,
+                targetHandValue: targetPlayer.roundPoints
+            });
+            
+            // Send updated game state after animation
+            io.to('game').emit('game-state', gameState);
+        }, 1100);
         
         // Check if round should end
         if (checkRoundEnd()) {

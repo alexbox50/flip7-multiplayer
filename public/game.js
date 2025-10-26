@@ -435,6 +435,14 @@ class Flip7Game {
             }
         });
 
+        this.socket.on('freeze-card-discarded', (data) => {
+            // Show message about freeze card being discarded
+            this.showMessage(`${data.playerName} discards Freeze card`, 'info');
+            
+            // Animate the freeze card from hand to discard pile
+            this.animateFreezeCardToDiscard(data.playerNumber, data.freezeCard);
+        });
+
         this.socket.on('freeze-effect-applied', (data) => {
             this.showMessage(
                 `${data.freezePlayerName} used Freeze on ${data.targetPlayerName}! ${data.targetPlayerName} is forced to Stick with ${data.targetHandValue} points.`, 
@@ -1707,6 +1715,14 @@ class Flip7Game {
         });
     }
 
+    animateFreezeCardToDiscard(playerNumber, freezeCard) {
+        // Animate the freeze card from player's hand to discard pile
+        this.animateCardToDiscard(freezeCard, playerNumber, () => {
+            // Update the game display after animation completes
+            this.updateGameDisplay();
+        });
+    }
+
     animateCardToDiscard(card, playerNumber, onComplete) {
         // Find the player's hand element
         const playerRow = document.querySelector(`tr[data-player-number="${playerNumber}"]`);
@@ -1751,13 +1767,17 @@ class Flip7Game {
         const colorClass = this.getCardColorClass(card.value);
         const suitSymbol = this.getCardSuit(card.value);
         let displayValue = card.value;
-        if (card.value === 'second-chance') displayValue = '🔄';
+        if (card.value === 'freeze') displayValue = '❄';
+        else if (card.value === 'second-chance') displayValue = '🔄';
 
         let cardColor = '#2c3e50';
         let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
 
         if (colorClass === 'red-card') {
             cardColor = '#e74c3c';
+        } else if (colorClass === 'freeze-card') {
+            cardColor = '#4682B4';
+            cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
         } else if (colorClass === 'second-chance-card') {
             cardColor = '#28a745';
             cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
