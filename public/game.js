@@ -569,8 +569,11 @@ class Flip7Game {
             // Update UI to disable buttons immediately
             this.updateActionButtons();
             
-            // Start the animation sequence: duplicate out, then second chance out
-            this.animateSecondChanceSequence(data);
+            // Give players time to see the duplicate card before discarding (1.5 seconds)
+            setTimeout(() => {
+                // Start the animation sequence: duplicate out, then second chance out
+                this.animateSecondChanceSequence(data);
+            }, 1500);
         });
     }
 
