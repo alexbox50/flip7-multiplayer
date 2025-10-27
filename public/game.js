@@ -6,6 +6,7 @@ class Flip7Game {
         this.gameState = null;
         this.isMyTurn = false;
         this.animatingCard = null; // Track cards currently being animated
+        this.pendingStartRoundBtn = false; // Track if Start Next Round button should show after animation
         
         this.initializeElements();
         this.setupEventListeners();
@@ -259,6 +260,13 @@ class Flip7Game {
                     this.animatingCard = null;
                     this.updateGameDisplay(); // This will now update current player highlighting after animation
                     
+                    // Check if Start Next Round button is waiting to be shown
+                    if (this.pendingStartRoundBtn) {
+                        this.startRoundBtn.style.display = 'inline-block';
+                        this.pendingStartRoundBtn = false;
+                        console.log('Animation completed - showing Start Next Round button');
+                    }
+                    
                     // If this was a flip 7 card, we might need to trigger celebration
                     if (data.isFlip7) {
                         console.log('This was a flip 7 card, celebration should follow');
@@ -399,7 +407,14 @@ class Flip7Game {
                 if (data.nextRoundStarter) {
                     message += `\nNext round starts with: ${data.nextRoundStarter.playerName} (#${data.nextRoundStarter.playerNumber})`;
                 }
-                this.startRoundBtn.style.display = 'inline-block';
+                
+                // Delay showing Start Next Round button if card animation is in progress
+                if (this.animatingCard) {
+                    // Set flag to show button when animation completes
+                    this.pendingStartRoundBtn = true;
+                } else {
+                    this.startRoundBtn.style.display = 'inline-block';
+                }
             }
             
             // Make round summary persistent (stays until Start Next Round is pressed)
@@ -650,6 +665,14 @@ class Flip7Game {
         return value.toString();
     }
 
+    // Helper function to format status display text
+    formatStatusDisplay(status) {
+        if (status === 'flip7') {
+            return 'FLIP 7';
+        }
+        return status ? status.toUpperCase() : 'WAITING';
+    }
+
     updateGameDisplay() {
         if (!this.gameState) {
             // Clear display when no game state
@@ -839,6 +862,13 @@ class Flip7Game {
         // Clear the animation state and update current player highlighting to actual game state
         this.animatingCard = null;
         this.updateGameDisplay();
+        
+        // Check if Start Next Round button is waiting to be shown
+        if (this.pendingStartRoundBtn) {
+            this.startRoundBtn.style.display = 'inline-block';
+            this.pendingStartRoundBtn = false;
+            console.log('Flip 7 animation completed - showing Start Next Round button');
+        }
     }
 
     updatePlayersListOnly() {
@@ -908,12 +938,12 @@ class Flip7Game {
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
             const handStats = this.calculateHandStats(player.cards || [], playerNumber);
             
-            // Don't show BUST status during bust card animation - show previous status instead
+            // Don't show BUST or FLIP7 status during card animation - show previous status instead
             let displayStatus = player.status || 'waiting';
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
-                player.status === 'bust') {
-                displayStatus = 'playing'; // Show as playing during bust animation
+                (player.status === 'bust' || player.status === 'flip7')) {
+                displayStatus = 'playing'; // Show as playing during animation
             }
             
             const statusClass = `status-${displayStatus}`;
@@ -928,9 +958,11 @@ class Flip7Game {
 
             // Calculate potential points like in updatePlayersList()
             let displayHandValue = handStats.handValue;
-            if (player.status === 'flip7') {
+            if (player.status === 'flip7' && displayStatus !== 'playing') {
+                // Only add Flip 7 bonus if we're not hiding flip7 status during animation
                 displayHandValue += 15;
-            } else if (player.status === 'bust') {
+            } else if (player.status === 'bust' && displayStatus !== 'playing') {
+                // Only use bust hand value if we're not hiding bust status during animation
                 displayHandValue = this.calculatePreBustHandValue(player.cards || [], playerNumber);
             }
             
@@ -955,7 +987,8 @@ class Flip7Game {
             
             // For bust players, calculate what they would have scored (for display in "Current" with strikethrough)
             let bustWouldHaveScored = null;
-            if (player.status === 'bust') {
+            if (player.status === 'bust' && displayStatus !== 'playing') {
+                // Only show bust styling if we're not hiding bust status during animation
                 bustWouldHaveScored = Math.max(0, 200 - (playerPoints + displayHandValue));
             }
 
@@ -1018,11 +1051,11 @@ class Flip7Game {
                 <td class="points-cell"></td>
                 <td class="points-remaining-cell"></td>
                 <td class="status-cell">
-                    <span class="status-indicator ${statusClass}">${displayStatus}</span>
+                    <span class="status-indicator ${statusClass}">${this.formatStatusDisplay(displayStatus)}</span>
                 </td>
                 <td class="hand-value-cell">
-                    <span class="${player.status === 'bust' ? 'bust-hand-value' : ''}">
-                        ${displayHandValue}${player.status === 'flip7' ? ' (+15 Flip 7 bonus)' : ''}
+                    <span class="${displayStatus === 'bust' ? 'bust-hand-value' : ''}">
+                        ${displayHandValue}
                     </span>
                 </td>
                 <td class="hand-cell">
@@ -1111,7 +1144,15 @@ class Flip7Game {
                 playerRow.classList.add('at-target');
             }
 
-            const statusClass = `status-${player.status || 'waiting'}`;
+            // Don't show BUST status during bust card animation - show previous status instead
+            let displayStatus = player.status || 'waiting';
+            if (this.animatingCard && 
+                this.animatingCard.playerNumber === parseInt(playerNumber) && 
+                (player.status === 'bust' || player.status === 'flip7')) {
+                displayStatus = 'playing'; // Show as playing during animation
+            }
+            
+            const statusClass = `status-${displayStatus}`;
             
             // Get ranking display
             const playerRank = rankingMap.get(playerNumber) || playersByNumber.length;
@@ -1123,11 +1164,11 @@ class Flip7Game {
             
             // Add Flip 7 bonus to hand value display if player achieved it
             let displayHandValue = handStats.handValue;
-            if (player.status === 'flip7') {
+            if (player.status === 'flip7' && displayStatus !== 'playing') {
+                // Only add Flip 7 bonus if we're not hiding flip7 status during animation
                 displayHandValue += 15;
-            } else if (player.status === 'bust') {
-                // For BUST players, show what they would have scored before going bust
-                // Calculate hand value excluding duplicate cards (keep only one of each value)
+            } else if (player.status === 'bust' && displayStatus !== 'playing') {
+                // Only use bust hand value if we're not hiding bust status during animation
                 displayHandValue = this.calculatePreBustHandValue(player.cards || [], playerNumber);
             }
             
@@ -1159,7 +1200,8 @@ class Flip7Game {
             
             // For bust players, calculate what they would have scored (for display in "Current" with strikethrough)
             let bustWouldHaveScored = null;
-            if (player.status === 'bust') {
+            if (player.status === 'bust' && displayStatus !== 'playing') {
+                // Only show bust styling if we're not hiding bust status during animation
                 bustWouldHaveScored = Math.max(0, 200 - (playerPoints + displayHandValue));
             }
             
@@ -1195,11 +1237,11 @@ class Flip7Game {
                     </div>
                 </td>
                 <td class="status-cell">
-                    <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
+                    <span class="status-indicator ${statusClass}">${this.formatStatusDisplay(displayStatus)}</span>
                 </td>
                 <td class="hand-value-cell">
-                    <span class="${player.status === 'bust' ? 'bust-hand-value' : ''}">
-                        ${displayHandValue}${player.status === 'flip7' ? ' (+15 Flip 7 bonus)' : ''}
+                    <span class="${displayStatus === 'bust' ? 'bust-hand-value' : ''}">
+                        ${displayHandValue}
                     </span>
                 </td>
                 <td class="hand-cell">

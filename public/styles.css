@@ -531,8 +531,9 @@ body {
 }
 
 .status-flip7 {
-    background: rgba(156, 39, 176, 0.3);
-    color: #9C27B0;
+    background: rgba(255, 215, 0, 0.3);
+    color: #ffd700;
+    font-weight: bold;
 }
 
 .scoring-info {
