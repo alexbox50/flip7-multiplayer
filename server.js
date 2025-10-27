@@ -1028,9 +1028,29 @@ io.on('connection', (socket) => {
         }
         
         if (!gameState.gameStarted) {
+            // Starting a new game - reset all player points and stats
+            console.log('=== NEW GAME START - RESETTING ALL SCORES ===');
+            Object.keys(gameState.players).forEach(playerNumber => {
+                const oldPoints = gameState.players[playerNumber].points || 0;
+                gameState.players[playerNumber].points = 0;
+                gameState.players[playerNumber].roundPoints = undefined;
+                gameState.players[playerNumber].cards = [];
+                gameState.players[playerNumber].status = 'waiting';
+                gameState.players[playerNumber].hasDrawnFirstCard = false;
+                console.log(`Player ${playerNumber}: ${oldPoints} -> 0 points`);
+            });
+            
+            // Reset game state
+            gameState.roundNumber = 1;
+            gameState.roundStartPlayer = 1;
+            gameState.currentPlayer = 1;
+            gameState.deck = [];
+            gameState.discardPile = [];
+            gameState.roundInProgress = false;
+            
             gameState.gameStarted = true;
             io.to('game').emit('game-started');
-            console.log('Game started with', playerCount, 'players');
+            console.log(`New game started with ${playerCount} players - all scores reset to 0`);
         }
         
         startNewRound();

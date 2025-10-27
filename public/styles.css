@@ -495,14 +495,12 @@ body {
 
 
 .game-winner {
-    background: rgba(255, 215, 0, 0.4) !important;
     border: 2px solid #FFD700 !important;
     animation: winner-pulse 2s ease-in-out infinite !important;
 }
 
 /* Ensure game winner styling takes precedence over current-turn and flip7-glow */
 .game-winner.current-turn {
-    background: rgba(255, 215, 0, 0.4) !important;
     border: 2px solid #FFD700 !important;
     animation: winner-pulse 2s ease-in-out infinite !important;
 }
@@ -513,16 +511,16 @@ body {
 
 @keyframes winner-pulse {
     0% { 
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-        transform: scale(1);
+        box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        background: rgba(255, 215, 0, 0.3) !important;
     }
     50% { 
-        box-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 40px rgba(255, 215, 0, 0.8);
-        transform: scale(1.02);
+        box-shadow: 0 0 25px rgba(255, 215, 0, 1), 0 0 35px rgba(255, 215, 0, 0.7);
+        background: rgba(255, 215, 0, 0.5) !important;
     }
     100% { 
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-        transform: scale(1);
+        box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        background: rgba(255, 215, 0, 0.3) !important;
     }
 }
 
