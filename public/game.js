@@ -1012,7 +1012,11 @@ class Flip7Game {
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${displayStatus}</span>
                 </td>
-                <td class="hand-value-cell">${handStats.handValue}</td>
+                <td class="hand-value-cell">
+                    <span class="${player.status === 'bust' ? 'bust-hand-value' : ''}">
+                        ${displayHandValue}${player.status === 'flip7' ? ' (+15 Flip 7 bonus)' : ''}
+                    </span>
+                </td>
                 <td class="hand-cell">
                     <div class="player-hand-display">${handCardsHTML}</div>
                 </td>
