@@ -336,11 +336,15 @@ function endRound() {
     });
     
     // Award points to players
+    console.log('=== AWARDING ROUND POINTS ===');
     Object.keys(gameState.players).forEach(playerNumber => {
         const player = gameState.players[playerNumber];
+        const oldPoints = player.points;
+        const roundPoints = player.roundPoints || 0;
         if (player.roundPoints !== undefined) {
             player.points += player.roundPoints;
         }
+        console.log(`Player ${playerNumber} (${player.name}): ${oldPoints} + ${roundPoints} = ${player.points} points`);
     });
     
     // Check for game completion (200+ points)
@@ -348,8 +352,20 @@ function endRound() {
         .map(player => ({ ...player, totalPoints: player.points }))
         .sort((a, b) => b.totalPoints - a.totalPoints);
     
+    console.log('=== FINAL SCORES FOR GAME COMPLETION CHECK ===');
+    playersWithScores.forEach(player => {
+        console.log(`Player ${player.number} (${player.name}): ${player.totalPoints} points`);
+    });
+    
     const highestScore = playersWithScores[0]?.totalPoints || 0;
     const playersAt200Plus = playersWithScores.filter(p => p.totalPoints >= 200);
+    
+    console.log(`=== GAME COMPLETION LOGIC ===`);
+    console.log(`Highest score: ${highestScore}`);
+    console.log(`Players at 200+: ${playersAt200Plus.length}`);
+    playersAt200Plus.forEach(p => {
+        console.log(`  - Player ${p.number} (${p.name}): ${p.totalPoints} points`);
+    });
     
     let gameComplete = false;
     let winners = [];
@@ -359,14 +375,24 @@ function endRound() {
         const topScore = playersAt200Plus[0].totalPoints;
         const topScorers = playersAt200Plus.filter(p => p.totalPoints === topScore);
         
+        console.log(`Top score among 200+ players: ${topScore}`);
+        console.log(`Number of players with top score: ${topScorers.length}`);
+        topScorers.forEach(p => {
+            console.log(`  - Top scorer: Player ${p.number} (${p.name}): ${p.totalPoints} points`);
+        });
+        
         if (topScorers.length === 1) {
             // Single winner with highest score over 200
             gameComplete = true;
             winners = topScorers;
+            console.log(`GAME COMPLETE! Winner: Player ${winners[0].number} (${winners[0].name}) with ${winners[0].totalPoints} points`);
         } else {
             // Tie at the top - continue playing until tie is broken
             gameComplete = false;
+            console.log(`TIE at top score - game continues`);
         }
+    } else {
+        console.log(`No players at 200+ points - game continues`);
     }
     
     // Calculate who will start the next round (if game continues)
@@ -409,12 +435,18 @@ function endRound() {
     if (gameComplete) {
         gameState.gameStarted = false;
         gameState.roundInProgress = false;
+        
+        const winnerData = winners.map(w => ({
+            playerNumber: w.number,
+            playerName: w.name,
+            totalPoints: w.totalPoints
+        }));
+        
+        console.log('=== SENDING GAME-COMPLETED EVENT ===');
+        console.log('Winner data being sent:', winnerData);
+        
         io.to('game').emit('game-completed', {
-            winners: winners.map(w => ({
-                playerNumber: w.number,
-                playerName: w.name,
-                totalPoints: w.totalPoints
-            })),
+            winners: winnerData,
             finalScores: playersWithScores.map(p => ({
                 playerNumber: p.number,
                 playerName: p.name,
@@ -821,7 +853,24 @@ io.on('connection', (socket) => {
                         const handValue = multipliedScore; // This is what we report as handValue
                         player.roundPoints = multipliedScore + 15; // Add Flip 7 bonus after multiplication
                         
-                        console.log(`FLIP 7 SCORING: Base=${baseScoringValue}, Multiplier=${multiplier}x, Multiplied=${multipliedScore}, +15 bonus = ${player.roundPoints}`);
+                        console.log(`=== FLIP 7 ACHIEVED ===`);
+                        console.log(`Player ${playerNumber} (${player.name}) achieved Flip 7!`);
+                        console.log(`Base scoring: ${baseScoringValue}, Multiplier: ${multiplier}x, Multiplied: ${multipliedScore}, +15 bonus = ${player.roundPoints}`);
+                        console.log(`Player ${playerNumber} current total: ${player.points} + ${player.roundPoints} = ${player.points + player.roundPoints}`);
+                        
+                        // When Flip 7 occurs, all remaining PLAYING players should be set to STUCK
+                        // This ensures consistent game state and proper round point calculation
+                        console.log(`=== SETTING ALL PLAYING PLAYERS TO STUCK ===`);
+                        Object.keys(gameState.players).forEach(otherPlayerNumber => {
+                            const otherPlayer = gameState.players[otherPlayerNumber];
+                            if (otherPlayer.status === 'playing' && parseInt(otherPlayerNumber) !== parseInt(playerNumber)) {
+                                console.log(`Setting Player ${otherPlayerNumber} (${otherPlayer.name}) from PLAYING to STUCK`);
+                                otherPlayer.status = 'stuck';
+                                // Calculate their round points based on current hand
+                                otherPlayer.roundPoints = calculateHandValue(parseInt(otherPlayerNumber));
+                                console.log(`Player ${otherPlayerNumber} round points: ${otherPlayer.roundPoints}`);
+                            }
+                        });
                         
                         // Send updated game state so client can show the 7th card
                         io.to('game').emit('game-state', gameState);

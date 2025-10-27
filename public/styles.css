@@ -308,6 +308,41 @@ body {
     font-weight: bold;
 }
 
+.bust-hand-value {
+    text-decoration: line-through;
+    opacity: 0.7;
+    color: #ff6b6b;
+}
+
+/* Dual Points Display */
+.dual-points {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+}
+
+.divider {
+    opacity: 0.5;
+    font-weight: normal;
+}
+
+.potential-points, .potential-remaining {
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.potential-winner {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.potential-crown {
+    margin-left: 4px;
+    opacity: 0.7;
+    filter: grayscale(50%);
+}
+
 .status-cell {
     width: 80px;
     text-align: center;

@@ -360,6 +360,16 @@ class Flip7Game {
         });
 
         this.socket.on('round-ended', (data) => {
+            // IMMEDIATELY update player points from the round results
+            data.results.forEach(result => {
+                if (this.gameState.players[result.playerNumber]) {
+                    this.gameState.players[result.playerNumber].points = result.totalPoints;
+                }
+            });
+            
+            // Refresh the UI to show updated points immediately
+            this.updatePlayersList();
+            
             let message = `Round ${data.roundNumber - 1} Results:\n`;
             
             // Sort results by total points for display
@@ -725,6 +735,56 @@ class Flip7Game {
         };
     }
 
+    // Calculate hand value for BUST players (excluding duplicates)
+    calculatePreBustHandValue(cards) {
+        if (!cards || cards.length === 0) {
+            return 0;
+        }
+        
+        // Filter out special cards and ignored cards
+        const numericCards = cards.filter(card => 
+            card.value !== 'freeze' && 
+            card.value !== 'second-chance' && 
+            card.value !== 'bonus' &&
+            card.value !== 'multiplier' &&
+            !card.ignored
+        );
+        
+        // Group cards by value and keep only one of each (first occurrence)
+        const seenValues = new Set();
+        const uniqueCards = [];
+        
+        numericCards.forEach(card => {
+            if (!seenValues.has(card.value)) {
+                seenValues.add(card.value);
+                uniqueCards.push(card);
+            }
+        });
+        
+        // Calculate multiplier
+        let multiplier = 1;
+        const multiplierCard = cards.find(card => card.value === 'multiplier' && !card.ignored);
+        if (multiplierCard) {
+            multiplier = multiplierCard.multiplier;
+        }
+        
+        // Calculate base value from unique cards plus bonus cards
+        let baseValue = 0;
+        uniqueCards.forEach(card => {
+            baseValue += card.value;
+        });
+        
+        // Add bonus cards
+        cards.forEach(card => {
+            if (card.value === 'bonus' && !card.ignored) {
+                baseValue += card.bonusPoints;
+            }
+        });
+        
+        // Apply multiplier
+        return baseValue * multiplier;
+    }
+
     updatePlayerListAfterAnimation() {
         // Clear the animation state and update current player highlighting to actual game state
         this.animatingCard = null;
@@ -922,7 +982,41 @@ class Flip7Game {
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
             const handStats = this.calculateHandStats(player.cards || [], playerNumber);
             
+            // Add Flip 7 bonus to hand value display if player achieved it
+            let displayHandValue = handStats.handValue;
+            if (player.status === 'flip7') {
+                displayHandValue += 15;
+            } else if (player.status === 'bust') {
+                // For BUST players, show what they would have scored before going bust
+                // Calculate hand value excluding duplicate cards (keep only one of each value)
+                displayHandValue = this.calculatePreBustHandValue(player.cards || []);
+            }
+            
+            // Calculate potential points (what player would get if they stuck now)
+            let potentialPoints;
+            
+            // Check if round is completely over by looking at all player statuses
+            const allPlayers = Object.values(this.gameState.players);
+            const roundComplete = allPlayers.every(p => 
+                p.status === 'stuck' || p.status === 'bust' || p.status === 'flip7' || p.status === 'waiting'
+            );
+            
+            if (roundComplete && (player.status === 'stuck' || player.status === 'bust' || player.status === 'flip7')) {
+                // Round is completely over - potential equals current points (already updated)
+                potentialPoints = playerPoints;
+            } else {
+                // Round is still in progress OR player is still playing - show what they'd get if they stuck
+                if (player.status === 'bust') {
+                    // Bust players get no additional points
+                    potentialPoints = playerPoints;
+                } else {
+                    // Show current points + hand value (what they'd get if round ended now)
+                    potentialPoints = playerPoints + displayHandValue;
+                }
+            }
+            
             const pointsRemaining = Math.max(0, 200 - playerPoints);
+            const potentialPointsRemaining = 200 - potentialPoints;
             
             playerRow.innerHTML = `
                 <td class="rank-cell">
@@ -935,12 +1029,29 @@ class Flip7Game {
                 <td class="player-name-cell">
                     <span class="player-name">${player.name}</span>
                 </td>
-                <td class="points-cell">${playerPoints}</td>
-                <td class="points-remaining-cell">${pointsRemaining}</td>
+                <td class="points-cell">
+                    <div class="dual-points">
+                        <span class="current-points">${playerPoints}</span>
+                        <span class="divider">/</span>
+                        <span class="potential-points">${potentialPoints}</span>
+                    </div>
+                </td>
+                <td class="points-remaining-cell">
+                    <div class="dual-points">
+                        <span class="current-remaining">${pointsRemaining}</span>
+                        <span class="divider">/</span>
+                        <span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${potentialPointsRemaining}</span>
+                        ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? '<span class="potential-crown">👑</span>' : ''}
+                    </div>
+                </td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${player.status || 'waiting'}</span>
                 </td>
-                <td class="hand-value-cell">${handStats.handValue}</td>
+                <td class="hand-value-cell">
+                    <span class="${player.status === 'bust' ? 'bust-hand-value' : ''}">
+                        ${displayHandValue}${player.status === 'flip7' ? ' (+15 Flip 7 bonus)' : ''}
+                    </span>
+                </td>
                 <td class="hand-cell">
                     <div class="player-hand-display">${handCardsHTML}</div>
                 </td>
