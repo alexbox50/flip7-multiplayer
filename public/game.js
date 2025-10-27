@@ -669,6 +669,14 @@ class Flip7Game {
         }
         
         this.updateTurnIndicator();
+        
+        // Control Start Game button visibility based on game state
+        // Hide the button if game has actually started
+        if (this.gameState.gameStarted) {
+            this.startGameBtn.style.display = 'none';
+        } else {
+            this.startGameBtn.style.display = 'inline-block';
+        }
     }
 
     // Helper function to calculate hand stats for any player
