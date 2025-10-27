@@ -677,9 +677,27 @@ class Flip7Game {
             return { uniqueCount: 0, handValue: 0 };
         }
         
+        // Apply same animation filtering as generatePlayerHandHTML to keep calculations consistent
+        let filteredCards = cards;
+        
+        if (this.animatingCard && 
+            this.animatingCard.playerNumber === parseInt(playerNumber) && 
+            cards.length > 0) {
+            
+            if (this.animatingCard.type === 'freeze-discard') {
+                // Remove the specific freeze card during freeze discard animation
+                filteredCards = cards.filter(card => 
+                    !(card.value === 'freeze' && card.id === this.animatingCard.card.id)
+                );
+            } else {
+                // Remove the last card (most recently drawn) during normal draw animation
+                filteredCards = cards.slice(0, -1);
+            }
+        }
+        
         // Filter out freeze cards, second chance cards, bonus cards, multiplier cards, and ignored cards for duplicate checking
         console.log(`CLIENT: Filtering cards for player ${playerNumber}:`);
-        cards.forEach(card => {
+        filteredCards.forEach(card => {
             const isFreeze = card.value === 'freeze';
             const isSecondChance = card.value === 'second-chance';
             const isBonus = card.value === 'bonus';
@@ -694,7 +712,7 @@ class Flip7Game {
             }
         });
         
-        const numericCards = cards.filter(card => 
+        const numericCards = filteredCards.filter(card => 
             card.value !== 'freeze' && 
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
@@ -709,14 +727,14 @@ class Flip7Game {
         // Calculate total hand value including bonus points and multiplier effects
         // First, find multiplier card
         let multiplier = 1;
-        const multiplierCard = cards.find(card => card.value === 'multiplier' && !card.ignored);
+        const multiplierCard = filteredCards.find(card => card.value === 'multiplier' && !card.ignored);
         if (multiplierCard) {
             multiplier = multiplierCard.multiplier;
         }
         
         // Calculate base scoring value (excluding multiplier cards)
         let baseValue = 0;
-        cards.forEach(card => {
+        filteredCards.forEach(card => {
             if (card.value !== 'freeze' && card.value !== 'second-chance' && card.value !== 'multiplier' && !card.ignored) {
                 if (card.value === 'bonus') {
                     baseValue += card.bonusPoints;
@@ -736,13 +754,30 @@ class Flip7Game {
     }
 
     // Calculate hand value for BUST players (excluding duplicates)
-    calculatePreBustHandValue(cards) {
+    calculatePreBustHandValue(cards, playerNumber = 'unknown') {
         if (!cards || cards.length === 0) {
             return 0;
         }
         
+        // Apply same animation filtering as other functions to keep calculations consistent
+        let filteredCards = cards;
+        if (this.animatingCard && 
+            this.animatingCard.playerNumber === parseInt(playerNumber) && 
+            cards.length > 0) {
+            
+            if (this.animatingCard.type === 'freeze-discard') {
+                // Remove the specific freeze card during freeze discard animation
+                filteredCards = cards.filter(card => 
+                    !(card.value === 'freeze' && card.id === this.animatingCard.card.id)
+                );
+            } else {
+                // Remove the last card (most recently drawn) during normal draw animation
+                filteredCards = cards.slice(0, -1);
+            }
+        }
+        
         // Filter out special cards and ignored cards
-        const numericCards = cards.filter(card => 
+        const numericCards = filteredCards.filter(card => 
             card.value !== 'freeze' && 
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
@@ -763,7 +798,7 @@ class Flip7Game {
         
         // Calculate multiplier
         let multiplier = 1;
-        const multiplierCard = cards.find(card => card.value === 'multiplier' && !card.ignored);
+        const multiplierCard = filteredCards.find(card => card.value === 'multiplier' && !card.ignored);
         if (multiplierCard) {
             multiplier = multiplierCard.multiplier;
         }
@@ -775,7 +810,7 @@ class Flip7Game {
         });
         
         // Add bonus cards
-        cards.forEach(card => {
+        filteredCards.forEach(card => {
             if (card.value === 'bonus' && !card.ignored) {
                 baseValue += card.bonusPoints;
             }
@@ -876,6 +911,73 @@ class Flip7Game {
             
             const pointsRemaining = Math.max(0, 200 - playerPoints);
 
+            // Calculate potential points like in updatePlayersList()
+            let displayHandValue = handStats.handValue;
+            if (player.status === 'flip7') {
+                displayHandValue += 15;
+            } else if (player.status === 'bust') {
+                displayHandValue = this.calculatePreBustHandValue(player.cards || [], playerNumber);
+            }
+            
+            // Calculate potential points
+            let calculatedPotentialPoints;
+            const allPlayers = Object.values(this.gameState.players);
+            const roundComplete = allPlayers.every(p => 
+                p.status === 'stuck' || p.status === 'bust' || p.status === 'flip7' || p.status === 'waiting'
+            );
+            
+            if (roundComplete && (player.status === 'stuck' || player.status === 'bust' || player.status === 'flip7')) {
+                calculatedPotentialPoints = playerPoints;
+            } else {
+                if (player.status === 'bust') {
+                    calculatedPotentialPoints = playerPoints;
+                } else {
+                    calculatedPotentialPoints = playerPoints + displayHandValue;
+                }
+            }
+            
+            const potentialPointsRemaining = 200 - calculatedPotentialPoints;
+
+            // Create points display with SAME CSS classes as updatePlayersList() to prevent disappearing during animations
+            const pointsContainer = document.createElement('div');
+            pointsContainer.className = 'dual-points';
+            
+            const currentPoints = document.createElement('span');
+            currentPoints.className = 'current-points';
+            currentPoints.textContent = playerPoints.toString();
+            
+            const divider1 = document.createElement('span');
+            divider1.className = 'divider';
+            divider1.textContent = ' / ';
+            
+            const potentialPointsSpan = document.createElement('span');
+            potentialPointsSpan.className = 'potential-points';
+            potentialPointsSpan.textContent = calculatedPotentialPoints.toString();
+            
+            pointsContainer.appendChild(currentPoints);
+            pointsContainer.appendChild(divider1);
+            pointsContainer.appendChild(potentialPointsSpan);
+            
+            // Create points remaining display with SAME CSS classes as updatePlayersList()
+            const pointsRemainingContainer = document.createElement('div');
+            pointsRemainingContainer.className = 'dual-points';
+            
+            const remainingPoints = document.createElement('span');
+            remainingPoints.className = 'current-points';
+            remainingPoints.textContent = pointsRemaining.toString();
+            
+            const divider2 = document.createElement('span');
+            divider2.className = 'divider';
+            divider2.textContent = ' / ';
+            
+            const potentialRemaining = document.createElement('span');
+            potentialRemaining.className = 'potential-points';
+            potentialRemaining.textContent = potentialPointsRemaining.toString();
+            
+            pointsRemainingContainer.appendChild(remainingPoints);
+            pointsRemainingContainer.appendChild(divider2);
+            pointsRemainingContainer.appendChild(potentialRemaining);
+
             existingRow.innerHTML = `
                 <td class="rank-cell">
                     <span class="rank-emoji">${rankDisplay.emoji}</span>
@@ -887,8 +989,8 @@ class Flip7Game {
                 <td class="player-name-cell">
                     <span class="player-name">${player.name}</span>
                 </td>
-                <td class="points-cell">${pointsDisplay}</td>
-                <td class="points-remaining-cell">${pointsRemaining}</td>
+                <td class="points-cell"></td>
+                <td class="points-remaining-cell"></td>
                 <td class="status-cell">
                     <span class="status-indicator ${statusClass}">${displayStatus}</span>
                 </td>
@@ -898,6 +1000,12 @@ class Flip7Game {
                 </td>
             `;
             
+            // Append the properly structured elements to preserve CSS classes during animations
+            const pointsCell = existingRow.querySelector('.points-cell');
+            const pointsRemainingCell = existingRow.querySelector('.points-remaining-cell');
+            pointsCell.appendChild(pointsContainer);
+            pointsRemainingCell.appendChild(pointsRemainingContainer);
+            
             // Apply the updated classes (with preserved current-turn highlighting during animation)
             existingRow.className = newClasses;
         });
@@ -906,7 +1014,8 @@ class Flip7Game {
     }
 
     updatePlayersList() {
-        this.playersList.innerHTML = '';
+        // Create document fragment to build new content without clearing existing content first
+        const fragment = document.createDocumentFragment();
         
         // Sort by player number (sequential order)
         const playersByNumber = Object.entries(this.gameState.players)
@@ -989,7 +1098,7 @@ class Flip7Game {
             } else if (player.status === 'bust') {
                 // For BUST players, show what they would have scored before going bust
                 // Calculate hand value excluding duplicate cards (keep only one of each value)
-                displayHandValue = this.calculatePreBustHandValue(player.cards || []);
+                displayHandValue = this.calculatePreBustHandValue(player.cards || [], playerNumber);
             }
             
             // Calculate potential points (what player would get if they stuck now)
@@ -1059,8 +1168,12 @@ class Flip7Game {
                 </td>
             `;
 
-            this.playersList.appendChild(playerRow);
+            fragment.appendChild(playerRow);
         });
+
+        // Replace all content atomically to prevent flickering during animations
+        this.playersList.innerHTML = '';
+        this.playersList.appendChild(fragment);
 
         // Leader info removed - points needed now shown in table column
     }
@@ -1845,6 +1958,7 @@ class Flip7Game {
 
         // Filter out the animating card if this is the player who drew it
         let filteredCards = cards;
+        
         if (this.animatingCard && 
             this.animatingCard.playerNumber === parseInt(playerNumber) && 
             cards.length > 0) {
