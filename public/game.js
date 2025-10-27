@@ -944,6 +944,12 @@ class Flip7Game {
             }
             
             const potentialPointsRemaining = 200 - calculatedPotentialPoints;
+            
+            // For bust players, calculate what they would have scored (for display in "Current" with strikethrough)
+            let bustWouldHaveScored = null;
+            if (player.status === 'bust') {
+                bustWouldHaveScored = Math.max(0, 200 - (playerPoints + displayHandValue));
+            }
 
             // Create points display with SAME CSS classes as updatePlayersList() to prevent disappearing during animations
             const pointsContainer = document.createElement('div');
@@ -978,8 +984,13 @@ class Flip7Game {
             divider2.textContent = ' / ';
             
             const potentialRemaining = document.createElement('span');
-            potentialRemaining.className = 'potential-points';
-            potentialRemaining.textContent = potentialPointsRemaining.toString();
+            if (player.status === 'bust' && bustWouldHaveScored !== null) {
+                potentialRemaining.className = 'potential-points bust-would-have-scored';
+                potentialRemaining.textContent = bustWouldHaveScored.toString();
+            } else {
+                potentialRemaining.className = 'potential-points';
+                potentialRemaining.textContent = potentialPointsRemaining.toString();
+            }
             
             pointsRemainingContainer.appendChild(remainingPoints);
             pointsRemainingContainer.appendChild(divider2);
@@ -1134,6 +1145,12 @@ class Flip7Game {
             const pointsRemaining = Math.max(0, 200 - playerPoints);
             const potentialPointsRemaining = 200 - potentialPoints;
             
+            // For bust players, calculate what they would have scored (for display in "Current" with strikethrough)
+            let bustWouldHaveScored = null;
+            if (player.status === 'bust') {
+                bustWouldHaveScored = Math.max(0, 200 - (playerPoints + displayHandValue));
+            }
+            
 
             
             playerRow.innerHTML = `
@@ -1158,7 +1175,10 @@ class Flip7Game {
                     <div class="dual-points">
                         <span class="current-remaining">${pointsRemaining}</span>
                         <span class="divider"> / </span>
-                        <span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${potentialPointsRemaining}</span>
+                        ${player.status === 'bust' && bustWouldHaveScored !== null ? 
+                            `<span class="potential-remaining bust-would-have-scored">${bustWouldHaveScored}</span>` :
+                            `<span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${potentialPointsRemaining}</span>`
+                        }
                         ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? '<span class="potential-crown">👑</span>' : ''}
                     </div>
                 </td>

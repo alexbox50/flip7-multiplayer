@@ -325,6 +325,14 @@ body {
     color: #ff6b6b;
 }
 
+.bust-would-have-scored {
+    text-decoration: line-through;
+    opacity: 0.7;
+    color: #ff6b6b !important;
+    font-weight: bold;
+    font-style: normal !important;
+}
+
 /* Dual Points Display */
 .dual-points {
     display: inline-flex;
