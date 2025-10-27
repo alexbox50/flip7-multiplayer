@@ -821,6 +821,13 @@ body {
     margin-bottom: 15px;
 }
 
+#action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
 .action-btn {
     color: white;
     border: none;
@@ -1353,35 +1360,16 @@ body {
 }
 
 /* Freeze Card Selection Styles */
-.freeze-selection {
-    background: rgba(173, 216, 230, 0.1);
-    border: 2px solid #87CEEB;
-    border-radius: 10px;
-    padding: 15px;
-    margin-top: 15px;
-    text-align: center;
-}
 
-.freeze-selection h4 {
-    color: #4682B4;
-    margin: 0 0 10px 0;
-    font-size: 1.1rem;
-}
-
-.freeze-selection p {
-    color: #555;
-    margin: 5px 0 15px 0;
-    font-size: 0.9rem;
-}
 
 .freeze-select {
-    width: 100%;
     padding: 8px 12px;
     border: 2px solid #87CEEB;
     border-radius: 5px;
     background: white;
     font-size: 1rem;
     margin-bottom: 10px;
+    min-width: 200px;
 }
 
 .freeze-select:focus {

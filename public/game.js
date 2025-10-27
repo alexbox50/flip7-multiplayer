@@ -39,7 +39,6 @@ class Flip7Game {
         this.turnStatus = document.getElementById('turn-status');
         
         // Freeze target selection elements
-        this.freezeTargetSelection = document.getElementById('freeze-target-selection');
         this.freezeTargetSelect = document.getElementById('freeze-target-select');
         this.freezeApplyBtn = document.getElementById('freeze-apply-btn');
         
@@ -2049,6 +2048,10 @@ class Flip7Game {
 
     // Freeze card methods
     showFreezeTargetSelection() {
+        // Hide the normal action buttons
+        this.drawBtn.classList.add('hidden');
+        this.stickBtn.classList.add('hidden');
+        
         // Populate the select with all playing players except the current player
         this.freezeTargetSelect.innerHTML = '<option value="">Choose player...</option>';
         
@@ -2073,14 +2076,22 @@ class Flip7Game {
             }
         }
         
-        this.freezeTargetSelection.classList.remove('hidden');
+        // Show the freeze controls
+        this.freezeTargetSelect.classList.remove('hidden');
+        this.freezeApplyBtn.classList.remove('hidden');
         this.updateFreezeApplyButton();
     }
 
     hideFreezeTargetSelection() {
-        this.freezeTargetSelection.classList.add('hidden');
+        // Hide the freeze controls
+        this.freezeTargetSelect.classList.add('hidden');
+        this.freezeApplyBtn.classList.add('hidden');
         this.freezeTargetSelect.value = '';
         this.freezeApplyBtn.disabled = true;
+        
+        // Show the normal action buttons again
+        this.drawBtn.classList.remove('hidden');
+        this.stickBtn.classList.remove('hidden');
     }
 
     updateFreezeApplyButton() {
