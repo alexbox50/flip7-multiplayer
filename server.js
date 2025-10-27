@@ -134,7 +134,19 @@ function drawCard(playerNumber) {
     // If deck is empty, shuffle discard pile into deck
     if (gameState.deck.length === 0 && gameState.discardPile.length > 0) {
         console.log('Draw pile empty, shuffling discard pile into new draw pile');
-        gameState.deck = shuffleDeck([...gameState.discardPile]);
+        
+        // Clean all cards by removing ignored flags and other temporary properties
+        const cleanedCards = gameState.discardPile.map(card => {
+            const cleanCard = { ...card };
+            delete cleanCard.ignored;
+            delete cleanCard.ignoredReason;
+            delete cleanCard.ignoredTimestamp;
+            
+            console.log(`Cleaning card ${cleanCard.value} (id: ${cleanCard.id}) - removed ignored flags`);
+            return cleanCard;
+        });
+        
+        gameState.deck = shuffleDeck(cleanedCards);
         gameState.discardPile = [];
         
         // Notify all players that deck was replenished
@@ -150,6 +162,8 @@ function drawCard(playerNumber) {
     const card = gameState.deck.pop();
     console.log(`=== CARD DRAWN ===`);
     console.log(`Player ${playerNumber} drew: ${card.value} (id: ${card.id})`);
+    console.log(`Card ignored status: ${card.ignored || false}`);
+    console.log(`Card ignored reason: ${card.ignoredReason || 'none'}`);
     console.log(`Cards remaining in deck: ${gameState.deck.length}`);
     if (gameState.deck.length > 0) {
         console.log(`New top card: ${gameState.deck[gameState.deck.length - 1].value} (id: ${gameState.deck[gameState.deck.length - 1].id})`);
@@ -165,15 +179,36 @@ function hasCardValue(playerNumber, value) {
 }
 
 function calculateHandValue(playerNumber) {
-    return gameState.players[playerNumber].cards.reduce((sum, card) => {
+    const player = gameState.players[playerNumber];
+    console.log(`=== CALCULATING HAND VALUE ===`);
+    console.log(`Player ${playerNumber} (${player.name})`);
+    console.log(`Total cards in hand: ${player.cards.length}`);
+    
+    const result = player.cards.reduce((sum, card) => {
+        console.log(`Processing card: ${card.value} (id: ${card.id})`);
+        
         // Freeze cards and Second Chance cards don't contribute to hand value
-        if (card.value === 'freeze' || card.value === 'second-chance') return sum;
+        if (card.value === 'freeze' || card.value === 'second-chance') {
+            console.log(`  -> Skipped: Special card (${card.value})`);
+            return sum;
+        }
         // Ignored duplicate cards don't contribute to hand value
-        if (card.ignored) return sum;
+        if (card.ignored) {
+            console.log(`  -> Skipped: Ignored card (reason: ${card.ignoredReason || 'unknown'}, timestamp: ${card.ignoredTimestamp || 'none'})`);
+            return sum;
+        }
         // Bonus Points cards add their bonus value to hand total
-        if (card.value === 'bonus') return sum + card.bonusPoints;
+        if (card.value === 'bonus') {
+            console.log(`  -> Added: Bonus card (+${card.bonusPoints})`);
+            return sum + card.bonusPoints;
+        }
+        console.log(`  -> Added: Regular card (${card.value})`);
         return sum + card.value;
     }, 0);
+    
+    console.log(`Final hand value: ${result}`);
+    console.log('===============================');
+    return result;
 }
 
 function checkRoundEnd() {
@@ -239,11 +274,22 @@ function assignPlayerSlot(playerId) {
 }
 
 function endRound() {
-    // Move all player cards to discard pile
+    // Move all player cards to discard pile, cleaning any temporary flags
     Object.keys(gameState.players).forEach(playerNumber => {
         const player = gameState.players[playerNumber];
         if (player.cards && player.cards.length > 0) {
-            gameState.discardPile.push(...player.cards);
+            // Clean cards before moving to discard pile
+            const cleanedCards = player.cards.map(card => {
+                const cleanCard = { ...card };
+                delete cleanCard.ignored;
+                delete cleanCard.ignoredReason;
+                delete cleanCard.ignoredTimestamp;
+                
+                console.log(`End round: Cleaning card ${cleanCard.value} (id: ${cleanCard.id}) from player ${playerNumber}`);
+                return cleanCard;
+            });
+            
+            gameState.discardPile.push(...cleanedCards);
         }
     });
     
@@ -612,21 +658,65 @@ io.on('connection', (socket) => {
                 
                 // Check for bust (same value already in hand)
                 // Exclude freeze cards, second chance cards, bonus cards, and ignored cards from value calculations
-                const cardValues = player.cards.filter(c => 
+                // Also exclude the newly drawn card from the existing hand check
+                console.log(`=== FILTERING CARDS FOR DUPLICATE CHECK ===`);
+                console.log(`Player ${playerNumber} total cards: ${player.cards.length}`);
+                player.cards.forEach(card => {
+                    const isFreeze = card.value === 'freeze';
+                    const isSecondChance = card.value === 'second-chance';
+                    const isBonus = card.value === 'bonus';
+                    const isIgnored = card.ignored;
+                    const isNewCard = card.id === drawnCard.id;
+                    const willExclude = isFreeze || isSecondChance || isBonus || isIgnored || isNewCard;
+                    
+                    console.log(`  Card ${card.value} (id: ${card.id}): ${willExclude ? 'EXCLUDED' : 'INCLUDED'}`);
+                    if (isFreeze) console.log(`    -> Reason: Freeze card`);
+                    if (isSecondChance) console.log(`    -> Reason: Second Chance card`);
+                    if (isBonus) console.log(`    -> Reason: Bonus card`);
+                    if (isIgnored) console.log(`    -> Reason: Ignored (${card.ignoredReason || 'unknown reason'})`);
+                    if (isNewCard) console.log(`    -> Reason: Newly drawn card`);
+                });
+                
+                const existingCardValues = player.cards.filter(c => 
                     c.value !== 'freeze' && 
                     c.value !== 'second-chance' && 
                     c.value !== 'bonus' &&
-                    !c.ignored
+                    !c.ignored &&
+                    c.id !== drawnCard.id // Exclude the card we just drew
                 ).map(c => c.value);
-                const uniqueValues = new Set(cardValues);
                 
-                if (cardValues.length !== uniqueValues.size) {
+                console.log(`Cards considered for duplicate check: [${existingCardValues.join(', ')}]`);
+                console.log('==========================================');
+                
+                // Check if the newly drawn card's value already exists in the hand
+                const isDuplicate = existingCardValues.includes(drawnCard.value);
+                
+                console.log(`=== DUPLICATE CHECK ===`);
+                console.log(`Player ${playerNumber} drew: ${drawnCard.value} (id: ${drawnCard.id})`);
+                console.log(`Existing card values: [${existingCardValues.join(', ')}]`);
+                console.log(`Is duplicate: ${isDuplicate}`);
+                console.log('========================');
+                
+                if (isDuplicate) {
                     // Check if player has Second Chance cards to use
                     const secondChanceCards = player.cards.filter(c => c.value === 'second-chance');
                     
                     if (secondChanceCards.length > 0) {
                         // Use Second Chance - mark duplicate as ignored and trigger animation sequence
+                        console.log(`=== MARKING CARD AS IGNORED ===`);
+                        console.log(`Player ${playerNumber} (${player.name})`);
+                        console.log(`Drawn card: ${drawnCard.value} (id: ${drawnCard.id})`);
+                        console.log(`Second Chance cards available: ${secondChanceCards.length}`);
+                        console.log(`Second Chance card IDs: [${secondChanceCards.map(c => c.id).join(', ')}]`);
+                        console.log(`Reason: Using Second Chance to ignore duplicate`);
+                        
                         drawnCard.ignored = true;
+                        drawnCard.ignoredReason = 'second-chance-used';
+                        drawnCard.ignoredTimestamp = Date.now();
+                        
+                        console.log(`Card ${drawnCard.id} marked as ignored with reason: ${drawnCard.ignoredReason}`);
+                        console.log('===============================');
+                        
                         gameState.secondChanceActive = true;
                         gameState.secondChancePlayer = playerNumber;
                         gameState.duplicateCard = drawnCard;
@@ -663,7 +753,20 @@ io.on('connection', (socket) => {
                         });
                     }
                 } else {
-                    // Check for Flip 7 (7 unique values)
+                    // Check for Flip 7 (7 unique values including the newly drawn card)
+                    console.log(`=== FILTERING CARDS FOR FLIP 7 CHECK ===`);
+                    const allCardValues = player.cards.filter(c => 
+                        c.value !== 'freeze' && 
+                        c.value !== 'second-chance' && 
+                        c.value !== 'bonus' &&
+                        !c.ignored
+                    ).map(c => c.value);
+                    const uniqueValues = new Set(allCardValues);
+                    
+                    console.log(`All card values for Flip 7 check: [${allCardValues.join(', ')}]`);
+                    console.log(`Unique values: [${Array.from(uniqueValues).join(', ')}] (${uniqueValues.size} unique)`);
+                    console.log('=======================================');
+                    
                     if (uniqueValues.size === 7) {
                         player.status = 'flip7';
                         const handValue = calculateHandValue(playerNumber);
@@ -755,8 +858,14 @@ io.on('connection', (socket) => {
         
         // Find the freeze card but don't remove it yet (wait for animation)
         const freezePlayer = gameState.players[playerNumber];
-        const freezeCardIndex = freezePlayer.cards.findIndex(card => card.value === 'freeze' && !card.used);
+        let freezeCardIndex = freezePlayer.cards.findIndex(card => card.value === 'freeze' && !card.used);
         let freezeCard = null;
+        
+        // If no unused freeze card found, look for any freeze card
+        if (freezeCardIndex === -1) {
+            freezeCardIndex = freezePlayer.cards.findIndex(card => card.value === 'freeze');
+        }
+        
         if (freezeCardIndex !== -1) {
             freezeCard = freezePlayer.cards[freezeCardIndex];
             // Mark it as used but keep it in hand during animation
@@ -773,14 +882,11 @@ io.on('connection', (socket) => {
         
         // Emit freeze card discard animation event first
         if (freezeCard) {
-            console.log(`Emitting freeze-card-discarded for player ${playerNumber}:`, freezeCard);
             io.to('game').emit('freeze-card-discarded', {
                 playerNumber: playerNumber,
                 playerName: gameState.players[playerNumber].name,
                 freezeCard: freezeCard
             });
-        } else {
-            console.log(`No freeze card found for player ${playerNumber}`);
         }
         
         // Then emit the freeze effect and update game state after animation

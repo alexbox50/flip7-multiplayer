@@ -120,6 +120,19 @@ class Flip7Game {
         });
 
         this.socket.on('game-state', (gameState) => {
+            // Debug ignored cards in the received game state
+            console.log(`CLIENT: Received game state update`);
+            Object.keys(gameState.players).forEach(playerNum => {
+                const player = gameState.players[playerNum];
+                const ignoredCards = player.cards.filter(card => card.ignored);
+                if (ignoredCards.length > 0) {
+                    console.log(`CLIENT: Player ${playerNum} has ${ignoredCards.length} ignored card(s):`);
+                    ignoredCards.forEach(card => {
+                        console.log(`  - ${card.value} (id: ${card.id}, reason: ${card.ignoredReason || 'unknown'}, timestamp: ${card.ignoredTimestamp ? new Date(card.ignoredTimestamp).toLocaleTimeString() : 'none'})`);
+                    });
+                }
+            });
+            
             this.gameState = gameState;
             // If we're animating, only update hands but preserve current player highlighting
             if (this.animatingCard) {
@@ -598,12 +611,27 @@ class Flip7Game {
     }
 
     // Helper function to calculate hand stats for any player
-    calculateHandStats(cards) {
+    calculateHandStats(cards, playerNumber = 'unknown') {
         if (!cards || cards.length === 0) {
             return { uniqueCount: 0, handValue: 0 };
         }
         
         // Filter out freeze cards, second chance cards, bonus cards, and ignored cards for duplicate checking
+        console.log(`CLIENT: Filtering cards for player ${playerNumber}:`);
+        cards.forEach(card => {
+            const isFreeze = card.value === 'freeze';
+            const isSecondChance = card.value === 'second-chance';
+            const isBonus = card.value === 'bonus';
+            const isIgnored = card.ignored;
+            const willExclude = isFreeze || isSecondChance || isBonus || isIgnored;
+            
+            console.log(`  Card ${card.value} (id: ${card.id}): ${willExclude ? 'EXCLUDED' : 'INCLUDED'}`);
+            if (isIgnored) {
+                console.log(`    -> Ignored reason: ${card.ignoredReason || 'unknown'}`);
+                console.log(`    -> Ignored timestamp: ${card.ignoredTimestamp ? new Date(card.ignoredTimestamp).toLocaleTimeString() : 'none'}`);
+            }
+        });
+        
         const numericCards = cards.filter(card => 
             card.value !== 'freeze' && 
             card.value !== 'second-chance' && 
@@ -611,6 +639,9 @@ class Flip7Game {
             !card.ignored
         );
         const uniqueValues = new Set(numericCards.map(card => card.value));
+        
+        console.log(`CLIENT: Numeric cards for player ${playerNumber}: [${numericCards.map(c => c.value).join(', ')}]`);
+        console.log(`CLIENT: Unique values: [${Array.from(uniqueValues).join(', ')}]`);
         
         // Calculate total hand value including bonus points
         let totalValue = 0;
@@ -701,7 +732,7 @@ class Flip7Game {
             const rankDisplay = getRankingDisplay(playerRank, playersByNumber.length);
             
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
-            const handStats = this.calculateHandStats(player.cards || []);
+            const handStats = this.calculateHandStats(player.cards || [], playerNumber);
             
             // Don't show BUST status during bust card animation - show previous status instead
             let displayStatus = player.status || 'waiting';
@@ -818,7 +849,7 @@ class Flip7Game {
             
             // Generate hand cards HTML and calculate stats
             const handCardsHTML = this.generatePlayerHandHTML(player.cards || [], playerNumber);
-            const handStats = this.calculateHandStats(player.cards || []);
+            const handStats = this.calculateHandStats(player.cards || [], playerNumber);
             
             const pointsRemaining = Math.max(0, 200 - playerPoints);
             
@@ -1642,7 +1673,15 @@ class Flip7Game {
             } else if (card.value === 'bonus') {
                 cardTitle = `Bonus Points Card +${card.bonusPoints || '?'}`;
             } else if (card.ignored) {
-                cardTitle = `Duplicate ${card.value} (Ignored by Second Chance)`;
+                console.log(`CLIENT: Rendering ignored card:`, {
+                    id: card.id,
+                    value: card.value,
+                    ignored: card.ignored,
+                    ignoredReason: card.ignoredReason,
+                    ignoredTimestamp: card.ignoredTimestamp,
+                    timestamp: new Date(card.ignoredTimestamp).toLocaleTimeString()
+                });
+                cardTitle = `Duplicate ${card.value} (Ignored by ${card.ignoredReason || 'Second Chance'})`;
                 additionalClasses = 'ignored-card';
             } else if (isDuplicate) {
                 cardTitle = `Duplicate value ${card.value}`;
@@ -1741,91 +1780,95 @@ class Flip7Game {
     }
 
     animateCardToDiscard(card, playerNumber, onComplete) {
-        // Find the player's hand element using the same method as other animations
-        let handElement = null;
+        // Find the specific player's hand cell (same method as animateCardToHand)
+        let handCell = null;
         const allRows = document.querySelectorAll('#players-table tr.player-row');
+        
         for (const row of allRows) {
             const playerNumElement = row.querySelector('.player-number');
             if (playerNumElement && playerNumElement.textContent.trim() === playerNumber.toString()) {
-                handElement = row.querySelector('.player-hand-display');
+                handCell = row.querySelector('.hand-cell');
                 break;
             }
         }
 
-        if (!handElement) {
-            console.log(`No hand display found for player ${playerNumber}`);
+        if (!handCell || !this.discardStack) {
             onComplete();
             return;
         }
 
-        // Get positions
-        const handRect = handElement.getBoundingClientRect();
+        // Get exact positions (same method as animateCardToHand)
+        const handRect = handCell.getBoundingClientRect();
         const discardRect = this.discardStack.getBoundingClientRect();
+        
+        // Calculate exact trajectory (same as animateCardToHand)
+        const deltaX = (discardRect.left + discardRect.width/2) - (handRect.left + handRect.width/2);
+        const deltaY = (discardRect.top + discardRect.height/2) - (handRect.top + handRect.height/2);
 
-        // Create flying card
+        // Create flying card with same structure as animateCardToHand
         const flyingCard = document.createElement('div');
-        flyingCard.className = 'flying-card';
+        flyingCard.className = 'card-flying-to-discard';
+        
+        // Set exact starting position and CSS variables (same as animateCardToHand)
         flyingCard.style.cssText = `
             position: fixed;
-            left: ${handRect.left + handRect.width/2 - 15}px;
-            top: ${handRect.top + handRect.height/2 - 21}px;
-            width: 30px;
-            height: 42px;
-            background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid #333;
-            border-radius: 3px;
-            z-index: 1000;
-            pointer-events: none;
+            left: ${handRect.left + handRect.width/2 - 40}px;
+            top: ${handRect.top + handRect.height/2 - 56}px;
+            width: 80px;
+            height: 112px;
+            z-index: 2000;
+            border: 2px solid #333;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
+            font-size: 1.2rem;
             font-weight: bold;
-            transition: all 0.8s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            --target-x: ${deltaX}px;
+            --target-y: ${deltaY}px;
         `;
 
+        // Set card styling based on type (same color logic as other functions)
         const colorClass = this.getCardColorClass(card.value);
         const suitSymbol = this.getCardSuit(card.value);
         let displayValue = card.value;
-        if (card.value === 'freeze') displayValue = '❄';
-        else if (card.value === 'second-chance') displayValue = '🔄';
-
         let cardColor = '#2c3e50';
         let cardBackground = 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)';
 
-        if (colorClass === 'red-card') {
-            cardColor = '#e74c3c';
-        } else if (colorClass === 'freeze-card') {
+        if (card.value === 'freeze') {
+            displayValue = '❄';
             cardColor = '#4682B4';
             cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
-        } else if (colorClass === 'second-chance-card') {
+        } else if (card.value === 'second-chance') {
+            displayValue = '🔄';
             cardColor = '#28a745';
             cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+        } else if (colorClass === 'red-card') {
+            cardColor = '#e74c3c';
+        } else if (card.value.toString().startsWith('bonus')) {
+            cardColor = '#007bff';
+            cardBackground = 'linear-gradient(145deg, #e6f3ff 0%, #cce7ff 100%)';
+            displayValue = `+${card.bonus}`;
         }
 
         flyingCard.style.background = cardBackground;
         flyingCard.style.color = cardColor;
         flyingCard.innerHTML = `
-            <div style="font-size: 0.6rem; line-height: 1;">${displayValue}</div>
-            <div style="font-size: 0.5rem; line-height: 1;">${suitSymbol}</div>
+            <div style="font-size: 1rem; line-height: 1;">${displayValue}</div>
+            <div style="font-size: 0.8rem; line-height: 1;">${suitSymbol}</div>
         `;
 
         document.body.appendChild(flyingCard);
 
-        // Animate to discard pile
+        // Remove the card after animation completes
         setTimeout(() => {
-            flyingCard.style.left = `${discardRect.left + discardRect.width/2 - 15}px`;
-            flyingCard.style.top = `${discardRect.top + discardRect.height/2 - 21}px`;
-            flyingCard.style.transform = 'scale(0.8)';
-            flyingCard.style.opacity = '0.8';
-        }, 50);
-
-        // Complete animation
-        setTimeout(() => {
-            flyingCard.remove();
+            if (flyingCard.parentNode) {
+                flyingCard.remove();
+            }
             onComplete();
-        }, 850);
+        }, 1250); // cardToDiscard animation is 1.2s, plus buffer
     }
 }
 
