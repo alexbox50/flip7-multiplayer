@@ -212,6 +212,17 @@ body {
     text-align: center;
 }
 
+/* Multi-line header styling */
+.header-line-1 {
+    display: block;
+}
+
+.header-line-2 {
+    display: block;
+    color: #2196F3;
+    font-weight: bold;
+}
+
 .players-table td {
     padding: 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -264,7 +275,7 @@ body {
 .player-number-cell {
     text-align: center;
     width: 60px;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: bold;
 }
 
@@ -276,25 +287,25 @@ body {
     font-weight: bold;
     color: #ff6b35;
     margin-right: 8px;
-    font-size: 0.675rem;
+    font-size: 1rem;
 }
 
 .player-name {
     color: #fff;
-    font-size: 0.465rem;
+    font-size: 1rem;
 }
 
 .card-count-cell, .unique-cell {
     text-align: center;
     width: 80px;
-    font-size: 0.73rem;
+    font-size: 1rem;
     font-weight: bold;
 }
 
 .points-cell, .points-remaining-cell, .hand-value-cell {
     text-align: center;
     width: 80px;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: bold;
 }
 
@@ -324,14 +335,13 @@ body {
 }
 
 .divider {
-    opacity: 0.7;
-    font-weight: normal;
-    color: #ccc;
+    display: none;
 }
 
 .potential-points, .potential-remaining {
     font-style: italic;
     opacity: 0.8;
+    color: #2196F3;
 }
 
 .potential-winner {
@@ -348,7 +358,7 @@ body {
 .status-cell {
     width: 80px;
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: bold;
 }
 
@@ -492,7 +502,7 @@ body {
 .status-indicator {
     padding: 2px 4px;
     border-radius: 7px;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: bold;
     text-transform: uppercase;
 }
