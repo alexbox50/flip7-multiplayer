@@ -1086,8 +1086,8 @@ class Flip7Game {
                     cardColor = '#007BFF';
                     cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
                 } else if (colorClass === 'multiplier-card') {
-                    cardColor = '#FF6B35';
-                    cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFE0B2 100%)';
+                    cardColor = '#007BFF';
+                    cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
                 }
                 
                 cardElement.style.cssText = `
@@ -1271,8 +1271,8 @@ class Flip7Game {
                 cardColor = '#007BFF';
                 cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
             } else if (colorClass === 'multiplier-card') {
-                cardColor = '#FF6B35';
-                cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFE0B2 100%)';
+                cardColor = '#007BFF';
+                cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
             }
             
             flyingCard.style.background = cardBackground;

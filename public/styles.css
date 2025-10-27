@@ -387,9 +387,9 @@ body {
 }
 
 .mini-card.multiplier-card {
-    color: #FF6B35;
-    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
-    border-color: #FF9800;
+    color: #007BFF;
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    border-color: #2196F3;
     font-weight: bold;
 }
 
@@ -1117,16 +1117,16 @@ body {
 }
 
 .multiplier-card {
-    color: #FF6B35;
-    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
-    border: 2px solid #FF9800;
+    color: #007BFF;
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    border: 2px solid #2196F3;
     font-weight: bold;
 }
 
 .multiplier-symbol {
     font-size: 1.2em;
     font-weight: bold;
-    color: #FF6B35;
+    color: #007BFF;
 }
 
 /* Suit colors */
