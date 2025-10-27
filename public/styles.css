@@ -316,15 +316,17 @@ body {
 
 /* Dual Points Display */
 .dual-points {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
     justify-content: center;
+    white-space: nowrap;
 }
 
 .divider {
-    opacity: 0.5;
+    opacity: 0.7;
     font-weight: normal;
+    color: #ccc;
 }
 
 .potential-points, .potential-remaining {

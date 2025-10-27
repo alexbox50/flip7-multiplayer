@@ -1018,6 +1018,8 @@ class Flip7Game {
             const pointsRemaining = Math.max(0, 200 - playerPoints);
             const potentialPointsRemaining = 200 - potentialPoints;
             
+
+            
             playerRow.innerHTML = `
                 <td class="rank-cell">
                     <span class="rank-emoji">${rankDisplay.emoji}</span>
@@ -1032,14 +1034,14 @@ class Flip7Game {
                 <td class="points-cell">
                     <div class="dual-points">
                         <span class="current-points">${playerPoints}</span>
-                        <span class="divider">/</span>
+                        <span class="divider"> / </span>
                         <span class="potential-points">${potentialPoints}</span>
                     </div>
                 </td>
                 <td class="points-remaining-cell">
                     <div class="dual-points">
                         <span class="current-remaining">${pointsRemaining}</span>
-                        <span class="divider">/</span>
+                        <span class="divider"> / </span>
                         <span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${potentialPointsRemaining}</span>
                         ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? '<span class="potential-crown">👑</span>' : ''}
                     </div>
