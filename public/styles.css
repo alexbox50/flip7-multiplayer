@@ -495,9 +495,14 @@ body {
 
 
 .game-winner {
-    background: rgba(255, 215, 0, 0.3);
-    border: 2px solid #FFD700;
-    animation: winner-glow 1s ease-in-out infinite alternate;
+    background: rgba(255, 215, 0, 0.3) !important;
+    border: 2px solid #FFD700 !important;
+    animation: winner-glow 1s ease-in-out infinite alternate !important;
+}
+
+/* Ensure game winner styling takes precedence over flip7-glow */
+.game-winner.flip7-glow {
+    animation: winner-glow 1s ease-in-out infinite alternate !important;
 }
 
 @keyframes winner-glow {

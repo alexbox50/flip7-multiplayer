@@ -373,6 +373,10 @@ class Flip7Game {
         });
 
         this.socket.on('game-completed', (data) => {
+            console.log('===== GAME COMPLETED =====');
+            console.log('Winners:', data.winners.map(w => `Player ${w.playerNumber} (${w.playerName}): ${w.totalPoints} pts`));
+            console.log('Final Scores:', data.finalScores.map(p => `Player ${p.playerNumber}: ${p.totalPoints} pts`));
+            
             let message = '🏆 FINAL RESULTS 🏆\n\n';
             data.winners.forEach(winner => {
                 message += `🥇 ${winner.playerName}: ${winner.totalPoints} points\n`;
@@ -387,14 +391,22 @@ class Flip7Game {
             
             // Highlight winners in the player list
             setTimeout(() => {
+                // First, clear any Flip 7 glow effects to ensure game winner highlighting is prominent
+                const flip7GlowRows = document.querySelectorAll('#players-table tr.flip7-glow');
+                flip7GlowRows.forEach(row => {
+                    console.log('Clearing flip7-glow for game winner highlighting');
+                    row.classList.remove('flip7-glow');
+                });
+                
+                // Then highlight the actual game winners
                 data.winners.forEach(winner => {
-                    const playerItems = Array.from(this.playersList.children);
-                    playerItems.forEach(item => {
-                        const playerNumber = item.querySelector('.player-number').textContent;
-                        if (parseInt(playerNumber) === winner.playerNumber) {
-                            item.classList.add('game-winner');
-                        }
-                    });
+                    const playerRow = document.querySelector(`#players-table tr[data-player="${winner.playerNumber}"]`);
+                    if (playerRow) {
+                        console.log(`Adding game-winner highlight to player ${winner.playerNumber}`);
+                        playerRow.classList.add('game-winner');
+                    } else {
+                        console.log(`Could not find row for game winner ${winner.playerNumber}`);
+                    }
                 });
             }, 100);
         });
@@ -1579,13 +1591,19 @@ class Flip7Game {
         // Add confetti effect
         this.createConfetti(celebration.querySelector('.confetti-container'));
         
-        // Add special glow to player's row in table instead of handCards
-        if (data.playerNumber === this.playerNumber) {
-            const playerRow = document.querySelector(`#players-table tr.current-turn`);
+        // Add special glow to the Flip 7 player's row in table (with slight delay to ensure DOM is updated)
+        setTimeout(() => {
+            const playerRow = document.querySelector(`#players-table tr[data-player="${data.playerNumber}"]`);
             if (playerRow) {
+                console.log(`Adding flip7-glow to player ${data.playerNumber}'s row`);
                 playerRow.classList.add('flip7-glow');
+            } else {
+                console.log(`Could not find row for player ${data.playerNumber} to add flip7-glow`);
+                // Log available rows for debugging
+                const allRows = document.querySelectorAll('#players-table tr[data-player]');
+                console.log(`Available player rows:`, Array.from(allRows).map(row => row.getAttribute('data-player')));
             }
-        }
+        }, 100);
         
         // Remove celebration after 4 seconds
         setTimeout(() => {
