@@ -2256,6 +2256,9 @@ class Flip7Game {
                 console.log('Freeze discard animation completed - showing Start Next Round button');
             }
             
+            // Update action buttons to re-enable them if appropriate
+            this.updateActionButtons();
+            
             // Update will happen when server sends updated game state
         });
     }
