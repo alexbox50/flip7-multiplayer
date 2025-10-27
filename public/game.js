@@ -1824,7 +1824,7 @@ class Flip7Game {
     updateActionButtons() {
         const player = this.gameState.players[this.playerNumber];
         const isMyTurn = this.gameState.currentPlayer === this.playerNumber;
-        const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress;
+        const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress && !this.animatingCard;
         
         // Check if this player drew a freeze card and must select a target
         const mustSelectFreezeTarget = this.gameState.freezeCardActive && 
@@ -2203,10 +2203,33 @@ class Flip7Game {
 
     // Second Chance animation sequence
     animateSecondChanceSequence(data) {
+        // Set animation state to prevent actions during second chance sequence
+        this.animatingCard = {
+            playerNumber: data.playerNumber,
+            card: data.duplicateCard,
+            type: 'second-chance-sequence'
+        };
+        
+        // Update UI to show animation state (disable buttons)
+        this.updateActionButtons();
+        
         // First animate the duplicate card out to discard pile
         this.animateCardToDiscard(data.duplicateCard, data.playerNumber, () => {
             // Then animate the second chance card out to discard pile
             this.animateCardToDiscard(data.secondChanceCard, data.playerNumber, () => {
+                // Clear animation state
+                this.animatingCard = null;
+                
+                // Check if Start Next Round button is waiting to be shown
+                if (this.pendingStartRoundBtn) {
+                    this.startRoundBtn.style.display = 'inline-block';
+                    this.pendingStartRoundBtn = false;
+                    console.log('Second chance animation completed - showing Start Next Round button');
+                }
+                
+                // Update UI to re-enable buttons if appropriate
+                this.updateActionButtons();
+                
                 // Notify server that animation is complete
                 this.socket.emit('second-chance-complete');
             });
