@@ -545,6 +545,16 @@ class Flip7Game {
                 'success'
             );
             
+            // Immediately set animation state to disable buttons
+            this.animatingCard = {
+                playerNumber: data.playerNumber,
+                card: data.duplicateCard,
+                type: 'second-chance-sequence'
+            };
+            
+            // Update UI to disable buttons immediately
+            this.updateActionButtons();
+            
             // Start the animation sequence: duplicate out, then second chance out
             this.animateSecondChanceSequence(data);
         });
@@ -2203,15 +2213,8 @@ class Flip7Game {
 
     // Second Chance animation sequence
     animateSecondChanceSequence(data) {
-        // Set animation state to prevent actions during second chance sequence
-        this.animatingCard = {
-            playerNumber: data.playerNumber,
-            card: data.duplicateCard,
-            type: 'second-chance-sequence'
-        };
-        
-        // Update UI to show animation state (disable buttons)
-        this.updateActionButtons();
+        // Animation state is already set by the event handler
+        // Just start the animation sequence
         
         // First animate the duplicate card out to discard pile
         this.animateCardToDiscard(data.duplicateCard, data.playerNumber, () => {
