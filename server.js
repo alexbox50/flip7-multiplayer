@@ -64,6 +64,11 @@ function createDeck() {
         deck.push({ value: 'bonus', bonusPoints: value, id: `bonus-${value}` });
     });
     
+    // Add 1 Multiplier card (2x multiplier)
+    deck.push({ value: 'multiplier', multiplier: 2, id: 'multiplier-2' });
+    
+    console.log(`Created deck with ${deck.length} cards (including 1 multiplier card)`);
+    
     return shuffleDeck(deck);
 }
 
@@ -178,17 +183,47 @@ function hasCardValue(playerNumber, value) {
     return gameState.players[playerNumber].cards.some(card => card.value === value);
 }
 
+function calculateBaseScoringValue(playerNumber) {
+    const player = gameState.players[playerNumber];
+    
+    // Calculate base score (excluding multiplier cards)
+    return player.cards.reduce((sum, card) => {
+        // Skip non-scoring cards (including multiplier)
+        if (card.value === 'freeze' || card.value === 'second-chance' || card.value === 'multiplier') {
+            return sum;
+        }
+        // Ignored duplicate cards don't contribute to hand value
+        if (card.ignored) {
+            return sum;
+        }
+        // Bonus Points cards add their bonus value to hand total
+        if (card.value === 'bonus') {
+            return sum + card.bonusPoints;
+        }
+        return sum + card.value;
+    }, 0);
+}
+
 function calculateHandValue(playerNumber) {
     const player = gameState.players[playerNumber];
     console.log(`=== CALCULATING HAND VALUE ===`);
     console.log(`Player ${playerNumber} (${player.name})`);
     console.log(`Total cards in hand: ${player.cards.length}`);
     
-    const result = player.cards.reduce((sum, card) => {
+    // Check for multiplier card first
+    let multiplier = 1;
+    const multiplierCard = player.cards.find(card => card.value === 'multiplier' && !card.ignored);
+    if (multiplierCard) {
+        multiplier = multiplierCard.multiplier;
+        console.log(`  -> Found: Multiplier card (${multiplier}x)`);
+    }
+    
+    // Calculate base score (excluding multiplier cards)
+    const baseScore = player.cards.reduce((sum, card) => {
         console.log(`Processing card: ${card.value} (id: ${card.id})`);
         
-        // Freeze cards and Second Chance cards don't contribute to hand value
-        if (card.value === 'freeze' || card.value === 'second-chance') {
+        // Skip non-scoring cards (including multiplier)
+        if (card.value === 'freeze' || card.value === 'second-chance' || card.value === 'multiplier') {
             console.log(`  -> Skipped: Special card (${card.value})`);
             return sum;
         }
@@ -206,9 +241,16 @@ function calculateHandValue(playerNumber) {
         return sum + card.value;
     }, 0);
     
-    console.log(`Final hand value: ${result}`);
+    // Apply multiplier to base score
+    const finalScore = baseScore * multiplier;
+    
+    console.log(`Base score: ${baseScore}`);
+    if (multiplier > 1) {
+        console.log(`Multiplier applied: ${baseScore} x ${multiplier} = ${finalScore}`);
+    }
+    console.log(`Final hand value: ${finalScore}`);
     console.log('===============================');
-    return result;
+    return finalScore;
 }
 
 function checkRoundEnd() {
@@ -759,6 +801,7 @@ io.on('connection', (socket) => {
                         c.value !== 'freeze' && 
                         c.value !== 'second-chance' && 
                         c.value !== 'bonus' &&
+                        c.value !== 'multiplier' &&
                         !c.ignored
                     ).map(c => c.value);
                     const uniqueValues = new Set(allCardValues);
@@ -769,8 +812,16 @@ io.on('connection', (socket) => {
                     
                     if (uniqueValues.size === 7) {
                         player.status = 'flip7';
-                        const handValue = calculateHandValue(playerNumber);
-                        player.roundPoints = handValue + 15;
+                        
+                        // For Flip 7: multiply only the scoring cards, then add 15 bonus
+                        const baseScoringValue = calculateBaseScoringValue(playerNumber);
+                        const multiplierCard = player.cards.find(card => card.value === 'multiplier' && !card.ignored);
+                        const multiplier = multiplierCard ? multiplierCard.multiplier : 1;
+                        const multipliedScore = baseScoringValue * multiplier;
+                        const handValue = multipliedScore; // This is what we report as handValue
+                        player.roundPoints = multipliedScore + 15; // Add Flip 7 bonus after multiplication
+                        
+                        console.log(`FLIP 7 SCORING: Base=${baseScoringValue}, Multiplier=${multiplier}x, Multiplied=${multipliedScore}, +15 bonus = ${player.roundPoints}`);
                         
                         // Send updated game state so client can show the 7th card
                         io.to('game').emit('game-state', gameState);

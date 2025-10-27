@@ -667,14 +667,15 @@ class Flip7Game {
             return { uniqueCount: 0, handValue: 0 };
         }
         
-        // Filter out freeze cards, second chance cards, bonus cards, and ignored cards for duplicate checking
+        // Filter out freeze cards, second chance cards, bonus cards, multiplier cards, and ignored cards for duplicate checking
         console.log(`CLIENT: Filtering cards for player ${playerNumber}:`);
         cards.forEach(card => {
             const isFreeze = card.value === 'freeze';
             const isSecondChance = card.value === 'second-chance';
             const isBonus = card.value === 'bonus';
+            const isMultiplier = card.value === 'multiplier';
             const isIgnored = card.ignored;
-            const willExclude = isFreeze || isSecondChance || isBonus || isIgnored;
+            const willExclude = isFreeze || isSecondChance || isBonus || isMultiplier || isIgnored;
             
             console.log(`  Card ${card.value} (id: ${card.id}): ${willExclude ? 'EXCLUDED' : 'INCLUDED'}`);
             if (isIgnored) {
@@ -687,6 +688,7 @@ class Flip7Game {
             card.value !== 'freeze' && 
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
+            card.value !== 'multiplier' &&
             !card.ignored
         );
         const uniqueValues = new Set(numericCards.map(card => card.value));
@@ -694,17 +696,28 @@ class Flip7Game {
         console.log(`CLIENT: Numeric cards for player ${playerNumber}: [${numericCards.map(c => c.value).join(', ')}]`);
         console.log(`CLIENT: Unique values: [${Array.from(uniqueValues).join(', ')}]`);
         
-        // Calculate total hand value including bonus points
-        let totalValue = 0;
+        // Calculate total hand value including bonus points and multiplier effects
+        // First, find multiplier card
+        let multiplier = 1;
+        const multiplierCard = cards.find(card => card.value === 'multiplier' && !card.ignored);
+        if (multiplierCard) {
+            multiplier = multiplierCard.multiplier;
+        }
+        
+        // Calculate base scoring value (excluding multiplier cards)
+        let baseValue = 0;
         cards.forEach(card => {
-            if (card.value !== 'freeze' && card.value !== 'second-chance' && !card.ignored) {
+            if (card.value !== 'freeze' && card.value !== 'second-chance' && card.value !== 'multiplier' && !card.ignored) {
                 if (card.value === 'bonus') {
-                    totalValue += card.bonusPoints;
+                    baseValue += card.bonusPoints;
                 } else {
-                    totalValue += card.value;
+                    baseValue += card.value;
                 }
             }
         });
+        
+        // Apply multiplier to base value
+        const totalValue = baseValue * multiplier;
         
         return {
             uniqueCount: uniqueValues.size,
@@ -1055,6 +1068,7 @@ class Flip7Game {
                 if (topCard.value === 'freeze') displayValue = '❄';
                 else if (topCard.value === 'second-chance') displayValue = '🔄';
                 else if (topCard.value === 'bonus') displayValue = topCard.bonusPoints;
+                else if (topCard.value === 'multiplier') displayValue = topCard.multiplier;
                 
                 // Different styling for special cards
                 let cardColor = '#2c3e50'; // default black
@@ -1071,6 +1085,9 @@ class Flip7Game {
                 } else if (colorClass === 'bonus-card') {
                     cardColor = '#007BFF';
                     cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
+                } else if (colorClass === 'multiplier-card') {
+                    cardColor = '#FF6B35';
+                    cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFE0B2 100%)';
                 }
                 
                 cardElement.style.cssText = `
@@ -1236,6 +1253,7 @@ class Flip7Game {
             if (drawnCard.value === 'freeze') displayValue = '❄';
             else if (drawnCard.value === 'second-chance') displayValue = '🔄';
             else if (drawnCard.value === 'bonus') displayValue = drawnCard.bonusPoints;
+            else if (drawnCard.value === 'multiplier') displayValue = drawnCard.multiplier;
             
             // Different styling for special cards
             let cardColor = '#2c3e50';
@@ -1252,6 +1270,9 @@ class Flip7Game {
             } else if (colorClass === 'bonus-card') {
                 cardColor = '#007BFF';
                 cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
+            } else if (colorClass === 'multiplier-card') {
+                cardColor = '#FF6B35';
+                cardBackground = 'linear-gradient(145deg, #FFF3E0 0%, #FFE0B2 100%)';
             }
             
             flyingCard.style.background = cardBackground;
@@ -1520,6 +1541,8 @@ class Flip7Game {
         let displayValue = card.value;
         if (card.value === 'bonus') {
             displayValue = card.bonusPoints || '?';
+        } else if (card.value === 'multiplier') {
+            displayValue = card.multiplier || '?';
         } else if (card.value === 'second-chance') {
             displayValue = 'Second Chance';
         }
@@ -1539,6 +1562,26 @@ class Flip7Game {
                     <div class="card-corner card-corner-bottom">
                         <div class="card-rank">Chance</div>
                         <div class="card-suit"> </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Special rendering for Multiplier cards with multiplier value on top and × underneath
+        if (card.value === 'multiplier') {
+            return `
+                <div class="card ${colorClass}" data-value="${card.value}">
+                    <div class="card-corner card-corner-top">
+                        <div class="card-rank">${displayValue}</div>
+                        <div class="card-suit">×</div>
+                    </div>
+                    <div class="card-center">
+                        <div class="card-value-large">${displayValue}</div>
+                        <div class="multiplier-symbol">×</div>
+                    </div>
+                    <div class="card-corner card-corner-bottom">
+                        <div class="card-rank">${displayValue}</div>
+                        <div class="card-suit">×</div>
                     </div>
                 </div>
             `;
@@ -1567,6 +1610,7 @@ class Flip7Game {
         if (value === 'freeze') return 'freeze-card';
         if (value === 'second-chance') return 'second-chance-card';
         if (value === 'bonus') return 'bonus-card';
+        if (value === 'multiplier') return 'multiplier-card';
         
         // Alternate colors for visual variety while maintaining game logic
         if (value <= 3) return 'red-card';
@@ -1580,6 +1624,7 @@ class Flip7Game {
         if (value === 'freeze') return '🧊'; // Ice cube symbol for freeze cards
         if (value === 'second-chance') return '🔄'; // Refresh symbol for second chance cards
         if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
+        if (value === 'multiplier') return '×'; // Multiplication symbol for multiplier cards
         
         // Assign suit symbols based on value for visual variety
         if (value <= 3) return '♥'; // Hearts (red)
@@ -1721,6 +1766,7 @@ class Flip7Game {
             if (card.value === 'freeze') displayValue = '❄';
             else if (card.value === 'second-chance') displayValue = '🔄';
             else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
+            else if (card.value === 'multiplier') displayValue = card.multiplier || '?';
             
             let cardTitle = '';
             let additionalClasses = '';
@@ -1736,6 +1782,8 @@ class Flip7Game {
                 cardTitle = 'Second Chance Card 🔄';
             } else if (card.value === 'bonus') {
                 cardTitle = `Bonus Points Card +${card.bonusPoints || '?'}`;
+            } else if (card.value === 'multiplier') {
+                cardTitle = `Multiplier Card ×${card.multiplier || '?'}`;
             } else if (card.ignored) {
                 console.log(`CLIENT: Rendering ignored card:`, {
                     id: card.id,
