@@ -642,6 +642,14 @@ class Flip7Game {
 
     // Removed playCard function - no longer needed for Flip 7
 
+    // Helper function to format remaining points (show + instead of - for negative values)
+    formatRemainingPoints(value) {
+        if (value < 0) {
+            return '+' + Math.abs(value);
+        }
+        return value.toString();
+    }
+
     updateGameDisplay() {
         if (!this.gameState) {
             // Clear display when no game state
@@ -986,10 +994,10 @@ class Flip7Game {
             const potentialRemaining = document.createElement('span');
             if (player.status === 'bust' && bustWouldHaveScored !== null) {
                 potentialRemaining.className = 'potential-points bust-would-have-scored';
-                potentialRemaining.textContent = bustWouldHaveScored.toString();
+                potentialRemaining.textContent = this.formatRemainingPoints(bustWouldHaveScored);
             } else {
                 potentialRemaining.className = 'potential-points';
-                potentialRemaining.textContent = potentialPointsRemaining.toString();
+                potentialRemaining.textContent = this.formatRemainingPoints(potentialPointsRemaining);
             }
             
             pointsRemainingContainer.appendChild(remainingPoints);
@@ -1180,8 +1188,8 @@ class Flip7Game {
                         <span class="current-remaining">${pointsRemaining}</span>
                         <span class="divider"> / </span>
                         ${player.status === 'bust' && bustWouldHaveScored !== null ? 
-                            `<span class="potential-remaining bust-would-have-scored">${bustWouldHaveScored}</span>` :
-                            `<span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${potentialPointsRemaining}</span>`
+                            `<span class="potential-remaining bust-would-have-scored">${this.formatRemainingPoints(bustWouldHaveScored)}</span>` :
+                            `<span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${this.formatRemainingPoints(potentialPointsRemaining)}</span>`
                         }
                         ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? '<span class="potential-crown">👑</span>' : ''}
                     </div>
