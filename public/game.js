@@ -258,7 +258,21 @@ class Flip7Game {
                     console.log(`Animation completed for player ${data.playerNumber}, showing card`);
                     // Clear the animating card flag and do FULL update including current player highlighting
                     this.animatingCard = null;
-                    this.updateGameDisplay(); // This will now update current player highlighting after animation
+                    
+                    // If this is a duplicate card, don't update action buttons yet (second-chance will handle it)
+                    if (data.isDuplicate) {
+                        console.log('Duplicate card animation completed, waiting for second-chance sequence');
+                        // Set animation state immediately to keep buttons disabled until second chance
+                        this.animatingCard = {
+                            playerNumber: data.playerNumber,
+                            card: data.card,
+                            type: 'awaiting-second-chance'
+                        };
+                        // Update display but don't update action buttons
+                        this.updateGameDisplay();
+                    } else {
+                        this.updateGameDisplay(); // This will now update current player highlighting after animation
+                    }
                     
                     // Check if Start Next Round button is waiting to be shown
                     if (this.pendingStartRoundBtn) {
@@ -545,7 +559,7 @@ class Flip7Game {
                 'success'
             );
             
-            // Immediately set animation state to disable buttons
+            // Set animation state for second chance sequence (overrides any existing state)
             this.animatingCard = {
                 playerNumber: data.playerNumber,
                 card: data.duplicateCard,

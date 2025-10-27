@@ -800,7 +800,8 @@ io.on('connection', (socket) => {
                             playerNumber,
                             playerName: player.name,
                             card: drawnCard,
-                            isFirstCard: false
+                            isFirstCard: false,
+                            isDuplicate: true // Flag to indicate this will trigger second chance
                         });
                         
                         // Then trigger second chance sequence after animation
