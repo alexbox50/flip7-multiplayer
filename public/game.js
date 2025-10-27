@@ -2207,6 +2207,14 @@ class Flip7Game {
         this.animateCardToDiscard(freezeCard, playerNumber, () => {
             // Clear animation state
             this.animatingCard = null;
+            
+            // Check if Start Next Round button is waiting to be shown
+            if (this.pendingStartRoundBtn) {
+                this.startRoundBtn.style.display = 'inline-block';
+                this.pendingStartRoundBtn = false;
+                console.log('Freeze discard animation completed - showing Start Next Round button');
+            }
+            
             // Update will happen when server sends updated game state
         });
     }
