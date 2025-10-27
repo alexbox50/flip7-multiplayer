@@ -958,6 +958,15 @@ class Flip7Game {
 
             // Calculate potential points like in updatePlayersList()
             let displayHandValue = handStats.handValue;
+            
+            // During animation, use previous hand value (exclude the animated card)
+            if (this.animatingCard && this.animatingCard.playerNumber === parseInt(playerNumber)) {
+                // Calculate hand value without the animated card
+                const cardsWithoutAnimated = (player.cards || []).slice(0, -1); // Remove last card
+                const prevHandStats = this.calculateHandStats(cardsWithoutAnimated, playerNumber);
+                displayHandValue = prevHandStats.handValue;
+            }
+            
             if (player.status === 'flip7' && displayStatus !== 'playing') {
                 // Only add Flip 7 bonus if we're not hiding flip7 status during animation
                 displayHandValue += 15;
@@ -1164,6 +1173,15 @@ class Flip7Game {
             
             // Add Flip 7 bonus to hand value display if player achieved it
             let displayHandValue = handStats.handValue;
+            
+            // During animation, use previous hand value (exclude the animated card)
+            if (this.animatingCard && this.animatingCard.playerNumber === parseInt(playerNumber)) {
+                // Calculate hand value without the animated card
+                const cardsWithoutAnimated = (player.cards || []).slice(0, -1); // Remove last card
+                const prevHandStats = this.calculateHandStats(cardsWithoutAnimated, playerNumber);
+                displayHandValue = prevHandStats.handValue;
+            }
+            
             if (player.status === 'flip7' && displayStatus !== 'playing') {
                 // Only add Flip 7 bonus if we're not hiding flip7 status during animation
                 displayHandValue += 15;
