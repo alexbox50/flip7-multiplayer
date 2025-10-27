@@ -57,6 +57,10 @@ class Flip7Game {
 
         // Track if we're showing a persistent round summary
         this.showingRoundSummary = false;
+        
+        // Track game completion state for winner highlighting
+        this.gameComplete = false;
+        this.gameWinners = null;
     }
 
     setupEventListeners() {
@@ -152,11 +156,33 @@ class Flip7Game {
         this.socket.on('game-started', () => {
             this.showMessage('Game started!', 'success');
             this.startGameBtn.style.display = 'none';
+            
+            // Clear game completion state when new game starts
+            this.gameComplete = false;
+            this.gameWinners = null;
+            
+            // Clear any winner highlighting from previous game
+            const winnerRows = document.querySelectorAll('#players-table tr.game-winner');
+            winnerRows.forEach(row => {
+                row.classList.remove('game-winner');
+            });
         });
 
         this.socket.on('round-started', (data) => {
             // Clear any persistent round summary when new round starts
             this.showingRoundSummary = false;
+            
+            // Clear game completion state when new round starts (new game)
+            if (data.roundNumber === 1) {
+                this.gameComplete = false;
+                this.gameWinners = null;
+                
+                // Clear any winner highlighting from previous game
+                const winnerRows = document.querySelectorAll('#players-table tr.game-winner');
+                winnerRows.forEach(row => {
+                    row.classList.remove('game-winner');
+                });
+            }
             
             // Animate cards flying to discard pile if not the first round
             if (data.roundNumber > 1) {
@@ -377,6 +403,10 @@ class Flip7Game {
             console.log('Winners:', data.winners.map(w => `Player ${w.playerNumber} (${w.playerName}): ${w.totalPoints} pts`));
             console.log('Final Scores:', data.finalScores.map(p => `Player ${p.playerNumber}: ${p.totalPoints} pts`));
             
+            // Mark game as completed to override current player highlighting
+            this.gameComplete = true;
+            this.gameWinners = data.winners.map(w => w.playerNumber);
+            
             let message = '🏆 FINAL RESULTS 🏆\n\n';
             data.winners.forEach(winner => {
                 message += `🥇 ${winner.playerName}: ${winner.totalPoints} points\n`;
@@ -389,25 +419,29 @@ class Flip7Game {
             
             this.showMessage(message, 'success');
             
-            // Highlight winners in the player list
+            // Highlight winners in the player list with continuous pulse
             setTimeout(() => {
-                // First, clear any Flip 7 glow effects to ensure game winner highlighting is prominent
-                const flip7GlowRows = document.querySelectorAll('#players-table tr.flip7-glow');
-                flip7GlowRows.forEach(row => {
-                    console.log('Clearing flip7-glow for game winner highlighting');
-                    row.classList.remove('flip7-glow');
+                console.log('Game completed - clearing all highlights and adding continuous winner pulse');
+                
+                // Clear ALL existing highlights (flip7-glow, current-turn)
+                const allRows = document.querySelectorAll('#players-table tr.player-row');
+                allRows.forEach(row => {
+                    row.classList.remove('flip7-glow', 'current-turn');
                 });
                 
-                // Then highlight the actual game winners
+                // Add persistent pulsing winner highlight
                 data.winners.forEach(winner => {
                     const playerRow = document.querySelector(`#players-table tr[data-player="${winner.playerNumber}"]`);
                     if (playerRow) {
-                        console.log(`Adding game-winner highlight to player ${winner.playerNumber}`);
+                        console.log(`Adding persistent game-winner pulse to player ${winner.playerNumber}`);
                         playerRow.classList.add('game-winner');
                     } else {
                         console.log(`Could not find row for game winner ${winner.playerNumber}`);
                     }
                 });
+                
+                // Force refresh of the game display to ensure proper highlighting
+                this.updateGameDisplay();
             }, 100);
         });
 
@@ -444,6 +478,11 @@ class Flip7Game {
         this.socket.on('game-completely-reset', () => {
             this.showMessage('Game was completely reset by admin', 'info');
             this.gameState = null;
+            
+            // Clear game completion state
+            this.gameComplete = false;
+            this.gameWinners = null;
+            
             this.updateGameDisplay();
             this.startGameBtn.style.display = 'inline-block';
             this.startGameBtn.textContent = 'Start Game';
@@ -839,8 +878,15 @@ class Flip7Game {
             playerRow.className = 'player-row';
             playerRow.setAttribute('data-player', playerNumber); // Add data attribute for identification
             
-            if (parseInt(playerNumber) === this.gameState.currentPlayer) {
+            // Only add current-turn highlighting if game is not complete
+            // When game is complete, only winners should be highlighted with continuous pulse
+            if (parseInt(playerNumber) === this.gameState.currentPlayer && !this.gameComplete) {
                 playerRow.classList.add('current-turn');
+            }
+            
+            // If game is complete and this player is a winner, add game-winner class
+            if (this.gameComplete && this.gameWinners && this.gameWinners.includes(parseInt(playerNumber))) {
+                playerRow.classList.add('game-winner');
             }
             
             if (!player.connected) {
