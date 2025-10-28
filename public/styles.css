@@ -531,8 +531,8 @@ body {
 }
 
 .status-flip7 {
-    background: rgba(255, 215, 0, 0.3);
-    color: #ffd700;
+    background: rgb(5 20 251 / 38%);
+    color: #f825e4;
     font-weight: bold;
 }
 
