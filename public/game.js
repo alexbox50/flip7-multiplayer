@@ -1868,10 +1868,8 @@ class Flip7Game {
             } else if (canAct) {
                 // Only show "It's your turn!" when buttons are actually enabled
                 this.turnStatus.textContent = "It's your turn!";
-            } else if (isMyTurn && (this.animatingCard || this.awaitingSecondChance)) {
-                // Show waiting message during animations even if it's technically our turn
-                this.turnStatus.textContent = "Waiting for animation to complete...";
             } else {
+                // Show waiting message for all other cases (including animations on our turn)
                 this.turnStatus.textContent = "Waiting for your turn...";
             }
         }
