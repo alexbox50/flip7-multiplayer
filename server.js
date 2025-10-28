@@ -41,6 +41,9 @@ const playerSlots = Array.from({length: MAX_PLAYERS}, (_, i) => ({
 function createDeck() {
     const deck = [];
     
+    // Add 1 Zero card (value 0, counts toward Flip 7 but gives no points)
+    deck.push({ value: 0, id: '0-0' });
+    
     // 1x card with value 1; 2x cards with value 2; ... 12x cards with value 12
     for (let value = 1; value <= 12; value++) {
         for (let count = 0; count < value; count++) {
@@ -67,7 +70,7 @@ function createDeck() {
     // Add 1 Multiplier card (2x multiplier)
     deck.push({ value: 'multiplier', multiplier: 2, id: 'multiplier-2' });
     
-    console.log(`Created deck with ${deck.length} cards (including 1 multiplier card)`);
+    console.log(`Created deck with ${deck.length} cards (including 1 zero card, 1 multiplier card)`);
     
     return shuffleDeck(deck);
 }
