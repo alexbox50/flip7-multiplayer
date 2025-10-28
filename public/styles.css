@@ -413,38 +413,38 @@ body {
 }
 
 .mini-card.freeze-card {
-    color: #4682B4;
-    background: linear-gradient(135deg, #E0F6FF, #B0E0E6);
-    border-color: #87CEEB;
+    color: white;
+    background: deepskyblue;
+    border-color: black;
     font-weight: bold;
 }
 
 .mini-card.used-freeze-card {
-    color: #87CEEB;
-    background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
-    border-color: #b0c4de;
+    color: white;
+    background: rgba(0, 191, 255, 0.7);
+    border-color: black;
     opacity: 0.7;
     font-weight: normal;
 }
 
 .mini-card.second-chance-card {
-    color: #28a745;
-    background: linear-gradient(135deg, #e8f5e8, #d4edda);
-    border-color: #28a745;
+    color: white;
+    background: red;
+    border-color: black;
     font-weight: bold;
 }
 
 .mini-card.bonus-card {
-    color: #007BFF;
-    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
-    border-color: #2196F3;
+    color: white;
+    background: #ff8000;
+    border-color: black;
     font-weight: bold;
 }
 
 .mini-card.multiplier-card {
-    color: #007BFF;
-    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
-    border-color: #2196F3;
+    color: white;
+    background: #ff8000;
+    border-color: black;
     font-weight: bold;
 }
 
@@ -1160,16 +1160,16 @@ body {
 }
 
 .freeze-card {
-    color: #4682B4;
-    background: linear-gradient(135deg, #E0F6FF, #B0E0E6);
-    border: 2px solid #87CEEB;
+    color: white;
+    background: deepskyblue;
+    border: 1px solid black;
     font-weight: bold;
 }
 
 .second-chance-card {
-    color: #28a745;
-    background: linear-gradient(135deg, #e8f5e8, #d4edda);
-    border: 2px solid #28a745;
+    color: white;
+    background: red;
+    border: 1px solid black;
     font-weight: bold;
 }
 
@@ -1180,16 +1180,16 @@ body {
 }
 
 .bonus-card {
-    color: #007BFF;
-    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
-    border: 2px solid #2196F3;
+    color: white;
+    background: #ff8000;
+    border: 1px solid black;
     font-weight: bold;
 }
 
 .multiplier-card {
-    color: #007BFF;
-    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
-    border: 2px solid #2196F3;
+    color: white;
+    background: #ff8000;
+    border: 1px solid black;
     font-weight: bold;
 }
 
