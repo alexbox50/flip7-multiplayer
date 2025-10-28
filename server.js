@@ -57,7 +57,7 @@ function createDeck() {
     }
     
     // Add 3 Second Chance cards
-    for (let count = 0; count < 30; count++) {
+    for (let count = 0; count < 3; count++) {
         deck.push({ value: 'second-chance', id: `second-chance-${count}` });
     }
     

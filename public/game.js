@@ -1416,7 +1416,7 @@ class Flip7Game {
                 const suitSymbol = this.getCardSuit(topCard.value);
                 let displayValue = topCard.value;
                 if (topCard.value === 'freeze') displayValue = '❄';
-                else if (topCard.value === 'second-chance') displayValue = '�';
+                else if (topCard.value === 'second-chance') displayValue = '🔄';
                 else if (topCard.value === 'bonus') displayValue = topCard.bonusPoints;
                 else if (topCard.value === 'multiplier') displayValue = topCard.multiplier;
                 
@@ -1450,10 +1450,17 @@ class Flip7Game {
                     border: 1px solid #333;
                 `;
                 
-                cardElement.innerHTML = `
-                    <div style="font-size: 1.25rem; line-height: 1; font-weight: bold;">${displayValue}</div>
-                    <div style="font-size: 1rem; line-height: 1;">${suitSymbol}</div>
-                `;
+                // For Freeze and Second Chance cards, show only one emoji to match the main card rendering
+                if (topCard.value === 'freeze' || topCard.value === 'second-chance') {
+                    cardElement.innerHTML = `
+                        <div style="font-size: 1.5rem; line-height: 1; font-weight: bold;">${displayValue}</div>
+                    `;
+                } else {
+                    cardElement.innerHTML = `
+                        <div style="font-size: 1.25rem; line-height: 1; font-weight: bold;">${displayValue}</div>
+                        <div style="font-size: 1rem; line-height: 1;">${suitSymbol}</div>
+                    `;
+                }
             } else {
                 // Face down cards
                 cardElement.className = 'deck-stack-card';
@@ -1601,7 +1608,7 @@ class Flip7Game {
             
             let displayValue = drawnCard.value;
             if (drawnCard.value === 'freeze') displayValue = '❄';
-            else if (drawnCard.value === 'second-chance') displayValue = '�';
+            else if (drawnCard.value === 'second-chance') displayValue = '🔄';
             else if (drawnCard.value === 'bonus') displayValue = drawnCard.bonusPoints;
             else if (drawnCard.value === 'multiplier') displayValue = drawnCard.multiplier;
             
@@ -1864,7 +1871,7 @@ class Flip7Game {
             if (!this.gameState.roundInProgress) {
                 this.turnStatus.textContent = "Waiting for game to start...";
             } else if (mustSelectFreezeTarget) {
-                this.turnStatus.textContent = "Choose a player to freeze with your Freeze card!";
+                this.turnStatus.textContent = "Choose a player to stick with your Freeze card!";
             } else if (canAct) {
                 // Only show "It's your turn!" when buttons are actually enabled
                 this.turnStatus.textContent = "It's your turn!";
@@ -1899,6 +1906,25 @@ class Flip7Game {
             displayValue = 'Second Chance';
         }
         
+        // Special rendering for Freeze cards to show only snowflake emoji in center
+        if (card.value === 'freeze') {
+            return `
+                <div class="card ${colorClass}" data-value="${card.value}">
+                    <div class="card-corner card-corner-top">
+                        <div class="card-rank">Freeze</div>
+                        <div class="card-suit"> </div>
+                    </div>
+                    <div class="card-center">
+                        <div class="card-value-large">❄️</div>
+                    </div>
+                    <div class="card-corner card-corner-bottom">
+                        <div class="card-rank">Card</div>
+                        <div class="card-suit"> </div>
+                    </div>
+                </div>
+            `;
+        }
+        
         // Special rendering for Second Chance cards to show only repeat emoji in center
         if (card.value === 'second-chance') {
             return `
@@ -1908,7 +1934,7 @@ class Flip7Game {
                         <div class="card-suit"> </div>
                     </div>
                     <div class="card-center">
-                        <div class="card-value-large">�</div>
+                        <div class="card-value-large">🔄</div>
                     </div>
                     <div class="card-corner card-corner-bottom">
                         <div class="card-rank">Chance</div>
@@ -1973,7 +1999,7 @@ class Flip7Game {
     getCardSuit(value) {
         // Handle special cards
         if (value === 'freeze') return '❄️'; // Snowflake emoji for freeze cards
-        if (value === 'second-chance') return '�'; // Repeat emoji for second chance cards
+        if (value === 'second-chance') return '🔄'; // Refresh emoji for second chance cards
         if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
         if (value === 'multiplier') return '×'; // Multiplication symbol for multiplier cards
         
@@ -2098,7 +2124,7 @@ class Flip7Game {
             
             let displayValue = card.value;
             if (card.value === 'freeze') displayValue = '❄';
-            else if (card.value === 'second-chance') displayValue = '�';
+            else if (card.value === 'second-chance') displayValue = '🔄';
             else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
             else if (card.value === 'multiplier') displayValue = card.multiplier || '?';
             
@@ -2140,7 +2166,7 @@ class Flip7Game {
                 <div class="mini-card ${colorClass} ${additionalClasses}" 
                      title="${cardTitle}">
                     <div class="mini-card-value">${displayValue}</div>
-                    <div class="mini-card-suit">${suitSymbol}</div>
+                    <div class="mini-card-suit">${(card.value === 'freeze' || card.value === 'second-chance') ? '' : suitSymbol}</div>
                 </div>
             `;
         }).join('');
@@ -2327,7 +2353,7 @@ class Flip7Game {
             cardColor = '#4682B4';
             cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
         } else if (card.value === 'second-chance') {
-            displayValue = '�';
+            displayValue = '🔄';
             cardColor = '#28a745';
             cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
         } else if (colorClass === 'red-card') {
@@ -2340,10 +2366,18 @@ class Flip7Game {
 
         flyingCard.style.background = cardBackground;
         flyingCard.style.color = cardColor;
-        flyingCard.innerHTML = `
-            <div style="font-size: 1rem; line-height: 1;">${displayValue}</div>
-            <div style="font-size: 0.8rem; line-height: 1;">${suitSymbol}</div>
-        `;
+        
+        // For Freeze and Second Chance cards, show only one emoji to match the main card rendering
+        if (card.value === 'freeze' || card.value === 'second-chance') {
+            flyingCard.innerHTML = `
+                <div style="font-size: 1.2rem; line-height: 1;">${displayValue}</div>
+            `;
+        } else {
+            flyingCard.innerHTML = `
+                <div style="font-size: 1rem; line-height: 1;">${displayValue}</div>
+                <div style="font-size: 0.8rem; line-height: 1;">${suitSymbol}</div>
+            `;
+        }
 
         document.body.appendChild(flyingCard);
 
