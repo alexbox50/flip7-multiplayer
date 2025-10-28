@@ -558,46 +558,75 @@ body {
 
 
 .game-winner {
-    border: 2px solid #FFD700 !important;
-    animation: winner-pulse 2s ease-in-out infinite !important;
+    border: 3px solid #FFD700 !important;
+    animation: winner-highlight 2s ease-in-out infinite !important;
     margin: 4px 0 !important;
     position: relative;
     z-index: 10;
+    border-radius: 8px !important;
 }
 
 /* Ensure game winner styling takes precedence over current-turn and flip7-glow */
 .game-winner.current-turn {
-    border: 2px solid #FFD700 !important;
-    animation: winner-pulse 2s ease-in-out infinite !important;
+    border: 3px solid #FFD700 !important;
+    animation: winner-highlight 2s ease-in-out infinite !important;
+    border-radius: 8px !important;
 }
 
 .game-winner.flip7-glow {
-    animation: winner-pulse 2s ease-in-out infinite !important;
+    animation: winner-highlight 2s ease-in-out infinite !important;
+    border-radius: 8px !important;
 }
 
-@keyframes winner-pulse {
+@keyframes winner-highlight {
     0% { 
-        box-shadow: 
-            0 0 8px rgba(255, 215, 0, 0.5),
-            inset 0 0 8px rgba(255, 215, 0, 0.3);
-        background: rgba(255, 215, 0, 0.3) !important;
-        transform: scale(1);
+        background: linear-gradient(135deg, 
+            rgba(255, 215, 0, 0.4) 0%, 
+            rgba(255, 223, 0, 0.3) 25%,
+            rgba(255, 215, 0, 0.4) 50%,
+            rgba(255, 223, 0, 0.3) 75%,
+            rgba(255, 215, 0, 0.4) 100%) !important;
+        border-color: #FFD700 !important;
+        color: #fff !important;
     }
     50% { 
-        box-shadow: 
-            0 0 25px rgba(255, 215, 0, 1), 
-            0 0 35px rgba(255, 215, 0, 0.7),
-            inset 0 0 15px rgba(255, 215, 0, 0.5);
-        background: rgba(255, 215, 0, 0.5) !important;
-        transform: scale(1.02);
+        background: linear-gradient(135deg, 
+            rgba(255, 215, 0, 0.7) 0%, 
+            rgba(255, 255, 255, 0.5) 25%,
+            rgba(255, 215, 0, 0.7) 50%,
+            rgba(255, 255, 255, 0.5) 75%,
+            rgba(255, 215, 0, 0.7) 100%) !important;
+        border-color: #FFF !important;
+        color: #000 !important;
+        text-shadow: 0 0 2px rgba(255, 215, 0, 1);
     }
     100% { 
-        box-shadow: 
-            0 0 8px rgba(255, 215, 0, 0.5),
-            inset 0 0 8px rgba(255, 215, 0, 0.3);
-        background: rgba(255, 215, 0, 0.3) !important;
-        transform: scale(1);
+        background: linear-gradient(135deg, 
+            rgba(255, 215, 0, 0.4) 0%, 
+            rgba(255, 223, 0, 0.3) 25%,
+            rgba(255, 215, 0, 0.4) 50%,
+            rgba(255, 223, 0, 0.3) 75%,
+            rgba(255, 215, 0, 0.4) 100%) !important;
+        border-color: #FFD700 !important;
+        color: #fff !important;
     }
+}
+
+/* Winner text and element styling */
+.game-winner .player-name,
+.game-winner .player-points,
+.game-winner .player-status {
+    font-weight: bold !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}
+
+.game-winner .player-cards {
+    filter: brightness(1.2) contrast(1.1) !important;
+}
+
+.game-winner .card {
+    border: 1px solid rgba(255, 215, 0, 0.8) !important;
+    box-shadow: inset 0 1px 3px rgba(255, 215, 0, 0.6) !important;
 }
 
 .game-status {
