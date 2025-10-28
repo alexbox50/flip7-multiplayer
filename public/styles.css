@@ -560,6 +560,9 @@ body {
 .game-winner {
     border: 2px solid #FFD700 !important;
     animation: winner-pulse 2s ease-in-out infinite !important;
+    margin: 4px 0 !important;
+    position: relative;
+    z-index: 10;
 }
 
 /* Ensure game winner styling takes precedence over current-turn and flip7-glow */
@@ -574,16 +577,26 @@ body {
 
 @keyframes winner-pulse {
     0% { 
-        box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        box-shadow: 
+            0 0 8px rgba(255, 215, 0, 0.5),
+            inset 0 0 8px rgba(255, 215, 0, 0.3);
         background: rgba(255, 215, 0, 0.3) !important;
+        transform: scale(1);
     }
     50% { 
-        box-shadow: 0 0 25px rgba(255, 215, 0, 1), 0 0 35px rgba(255, 215, 0, 0.7);
+        box-shadow: 
+            0 0 25px rgba(255, 215, 0, 1), 
+            0 0 35px rgba(255, 215, 0, 0.7),
+            inset 0 0 15px rgba(255, 215, 0, 0.5);
         background: rgba(255, 215, 0, 0.5) !important;
+        transform: scale(1.02);
     }
     100% { 
-        box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        box-shadow: 
+            0 0 8px rgba(255, 215, 0, 0.5),
+            inset 0 0 8px rgba(255, 215, 0, 0.3);
         background: rgba(255, 215, 0, 0.3) !important;
+        transform: scale(1);
     }
 }
 
