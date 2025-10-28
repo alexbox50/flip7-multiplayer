@@ -567,15 +567,9 @@ body {
     background: rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Ensure game winner styling takes precedence over current-turn and flip7-glow */
+/* Ensure game winner styling takes precedence over current-turn */
 .game-winner.current-turn {
     border: 2px solid #FFD700 !important;
-    animation: winner-glow 2s ease-in-out infinite !important;
-    border-radius: 8px !important;
-    background: rgba(0, 0, 0, 0.3) !important;
-}
-
-.game-winner.flip7-glow {
     animation: winner-glow 2s ease-in-out infinite !important;
     border-radius: 8px !important;
     background: rgba(0, 0, 0, 0.3) !important;
@@ -1017,10 +1011,6 @@ body {
     color: #ddd;
 }
 
-.flip7-glow {
-    animation: flip7CardGlow 2s ease-in-out infinite;
-}
-
 .confetti-container {
     position: absolute;
     top: 0;
@@ -1064,15 +1054,6 @@ body {
     50% {
         transform: scale(1.05);
         text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-    }
-}
-
-@keyframes flip7CardGlow {
-    0%, 100% {
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-    }
-    50% {
-        box-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 50px rgba(255, 215, 0, 0.7);
     }
 }
 

@@ -458,10 +458,10 @@ class Flip7Game {
             setTimeout(() => {
                 console.log('Game completed - clearing all highlights and adding continuous winner pulse');
                 
-                // Clear ALL existing highlights (flip7-glow, current-turn)
+                // Clear ALL existing highlights (current-turn)
                 const allRows = document.querySelectorAll('#players-table tr.player-row');
                 allRows.forEach(row => {
-                    row.classList.remove('flip7-glow', 'current-turn');
+                    row.classList.remove('current-turn');
                 });
                 
                 // Add persistent pulsing winner highlight
@@ -2034,27 +2034,9 @@ class Flip7Game {
         // Add confetti effect
         this.createConfetti(celebration.querySelector('.confetti-container'));
         
-        // Add special glow to the Flip 7 player's row in table (with slight delay to ensure DOM is updated)
-        setTimeout(() => {
-            const playerRow = document.querySelector(`#players-table tr[data-player="${data.playerNumber}"]`);
-            if (playerRow) {
-                console.log(`Adding flip7-glow to player ${data.playerNumber}'s row`);
-                playerRow.classList.add('flip7-glow');
-            } else {
-                console.log(`Could not find row for player ${data.playerNumber} to add flip7-glow`);
-                // Log available rows for debugging
-                const allRows = document.querySelectorAll('#players-table tr[data-player]');
-                console.log(`Available player rows:`, Array.from(allRows).map(row => row.getAttribute('data-player')));
-            }
-        }, 100);
-        
         // Remove celebration after 4 seconds
         setTimeout(() => {
             celebration.remove();
-            const playerRow = document.querySelector(`#players-table tr.flip7-glow`);
-            if (playerRow) {
-                playerRow.classList.remove('flip7-glow');
-            }
         }, 4000);
     }
 
