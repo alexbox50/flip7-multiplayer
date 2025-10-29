@@ -212,6 +212,11 @@ body {
     text-align: center;
 }
 
+/* Color styling for Current Hand Points header */
+.players-table th:nth-child(7)  /* Current Hand Points */ {
+    color: #5faeed;
+}
+
 /* Multi-line header styling */
 .header-line-1 {
     display: block;
@@ -219,7 +224,7 @@ body {
 
 .header-line-2 {
     display: block;
-    color: #2196F3;
+    color: #5faeed;
     font-weight: bold;
 }
 
@@ -315,7 +320,7 @@ body {
 }
 
 .hand-value-cell {
-    color: #2196F3;
+    color: #5faeed;
     font-weight: bold;
 }
 
@@ -349,7 +354,7 @@ body {
 .potential-points, .potential-remaining {
     font-style: italic;
     opacity: 0.8;
-    color: #2196F3;
+    color: #5faeed;
 }
 
 .potential-winner {
@@ -452,7 +457,6 @@ body {
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
     border-color: #6c757d;
     opacity: 0.6;
-    text-decoration: line-through;
 }
 
 .mini-card.duplicate-card {
@@ -1363,9 +1367,9 @@ body {
 }
 
 .message.info {
-    background: rgba(33, 150, 243, 0.2);
-    border: 1px solid #2196F3;
-    color: #2196F3;
+    background: rgba(95, 174, 237, 0.2);
+    border: 1px solid #5faeed;
+    color: #5faeed;
 }
 
 .message.warning {

@@ -1427,11 +1427,11 @@ class Flip7Game {
                 if (colorClass === 'red-card') {
                     cardColor = '#e74c3c';
                 } else if (colorClass === 'freeze-card') {
-                    cardColor = '#4682B4';
-                    cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+                    cardColor = 'white';
+                    cardBackground = 'deepskyblue';
                 } else if (colorClass === 'second-chance-card') {
-                    cardColor = '#28a745';
-                    cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+                    cardColor = 'white';
+                    cardBackground = 'red';
                 } else if (colorClass === 'bonus-card') {
                     cardColor = '#007BFF';
                     cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
@@ -1619,11 +1619,11 @@ class Flip7Game {
             if (colorClass === 'red-card') {
                 cardColor = '#e74c3c';
             } else if (colorClass === 'freeze-card') {
-                cardColor = '#4682B4';
-                cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+                cardColor = 'white';
+                cardBackground = 'deepskyblue';
             } else if (colorClass === 'second-chance-card') {
-                cardColor = '#28a745';
-                cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+                cardColor = 'white';
+                cardBackground = 'red';
             } else if (colorClass === 'bonus-card') {
                 cardColor = '#007BFF';
                 cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
@@ -2350,12 +2350,12 @@ class Flip7Game {
 
         if (card.value === 'freeze') {
             displayValue = '❄';
-            cardColor = '#4682B4';
-            cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
+            cardColor = 'white';
+            cardBackground = 'deepskyblue';
         } else if (card.value === 'second-chance') {
             displayValue = '✚';
-            cardColor = '#28a745';
-            cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
+            cardColor = 'white';
+            cardBackground = 'red';
         } else if (colorClass === 'red-card') {
             cardColor = '#e74c3c';
         } else if (card.value.toString().startsWith('bonus')) {
