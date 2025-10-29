@@ -468,43 +468,58 @@ io.on('connection', (socket) => {
 
     // Handle player joining
     socket.on('join-game', (data) => {
-        const { playerName, playerNumber } = data;
+        const { playerName } = data;
         
-        // Check if specific player number requested and available
-        if (playerNumber) {
-            const slot = playerSlots.find(slot => slot.number === parseInt(playerNumber));
-            if (slot && !slot.occupied) {
-                slot.occupied = true;
-                slot.playerId = socket.id;
-                
-                gameState.players[playerNumber] = {
-                    id: socket.id,
-                    name: playerName || `Player ${playerNumber}`,
-                    cards: [],
-                    connected: true,
-                    number: parseInt(playerNumber),
-                    points: 0,
-                    status: 'waiting',
-                    hasDrawnFirstCard: false
-                };
-                
-                socket.playerNumber = playerNumber;
-                socket.join('game');
-                
-                socket.emit('player-assigned', { playerNumber, name: gameState.players[playerNumber].name });
-                io.to('game').emit('game-state', gameState);
-                
-                console.log(`Player ${playerName} assigned to slot ${playerNumber}`);
+        if (!playerName || !playerName.trim()) {
+            socket.emit('join-failed', { message: 'Please enter a valid name' });
+            return;
+        }
+
+        const trimmedName = playerName.trim();
+        
+        // Check if a player with this exact name already exists
+        const existingPlayerEntry = Object.entries(gameState.players).find(
+            ([num, player]) => player.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+        
+        if (existingPlayerEntry) {
+            const [existingPlayerNumber, existingPlayer] = existingPlayerEntry;
+            
+            if (existingPlayer.connected) {
+                // Name is taken by a connected player - reject
+                socket.emit('join-failed', { message: 'This name is already taken by a connected player. Please choose a different name.' });
                 return;
+            } else {
+                // Disconnected player with same name - auto-reconnect
+                const slot = playerSlots.find(slot => slot.number === parseInt(existingPlayerNumber));
+                if (slot && slot.occupied) {
+                    // Reconnect to existing player slot
+                    existingPlayer.id = socket.id;
+                    existingPlayer.connected = true;
+                    slot.playerId = socket.id;
+                    
+                    socket.playerNumber = parseInt(existingPlayerNumber);
+                    socket.join('game');
+                    
+                    socket.emit('player-assigned', { 
+                        playerNumber: parseInt(existingPlayerNumber), 
+                        name: existingPlayer.name,
+                        reconnected: true 
+                    });
+                    io.to('game').emit('game-state', gameState);
+                    
+                    console.log(`Player ${trimmedName} reconnected to slot ${existingPlayerNumber}`);
+                    return;
+                }
             }
         }
         
-        // Assign next available slot
+        // No existing player with this name - assign new slot
         const assignedNumber = assignPlayerSlot(socket.id);
         if (assignedNumber) {
             gameState.players[assignedNumber] = {
                 id: socket.id,
-                name: playerName || `Player ${assignedNumber}`,
+                name: trimmedName,
                 cards: [],
                 connected: true,
                 number: assignedNumber,
@@ -519,38 +534,13 @@ io.on('connection', (socket) => {
             socket.emit('player-assigned', { playerNumber: assignedNumber, name: gameState.players[assignedNumber].name });
             io.to('game').emit('game-state', gameState);
             
-            console.log(`Player ${playerName} assigned to slot ${assignedNumber}`);
+            console.log(`Player ${trimmedName} assigned to new slot ${assignedNumber}`);
         } else {
             socket.emit('game-full', { message: 'Game is full (18 players max)' });
         }
     });
 
-    // Handle player reconnection
-    socket.on('reconnect-player', (data) => {
-        const { playerNumber } = data;
-        const slot = playerSlots.find(slot => slot.number === parseInt(playerNumber));
-        
-        if (slot && slot.occupied && gameState.players[playerNumber]) {
-            // Update socket ID for reconnecting player
-            gameState.players[playerNumber].id = socket.id;
-            gameState.players[playerNumber].connected = true;
-            slot.playerId = socket.id;
-            
-            socket.playerNumber = playerNumber;
-            socket.join('game');
-            
-            socket.emit('player-assigned', { 
-                playerNumber, 
-                name: gameState.players[playerNumber].name,
-                reconnected: true 
-            });
-            io.to('game').emit('game-state', gameState);
-            
-            console.log(`Player reconnected to slot ${playerNumber}`);
-        } else {
-            socket.emit('reconnect-failed', { message: 'Player slot not found or available' });
-        }
-    });
+
 
     // Handle player action (draw card, stick)
     socket.on('player-action', (data) => {

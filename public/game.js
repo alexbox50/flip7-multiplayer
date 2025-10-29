@@ -19,9 +19,7 @@ class Flip7Game {
         this.connectionScreen = document.getElementById('connection-screen');
         this.gameScreen = document.getElementById('game-screen');
         this.playerNameInput = document.getElementById('player-name');
-        this.playerNumberInput = document.getElementById('player-number');
         this.joinBtn = document.getElementById('join-btn');
-        this.reconnectBtn = document.getElementById('reconnect-btn');
         this.connectionStatus = document.getElementById('connection-status');
 
         // Game screen elements
@@ -66,7 +64,6 @@ class Flip7Game {
 
     setupEventListeners() {
         this.joinBtn.addEventListener('click', () => this.joinGame());
-        this.reconnectBtn.addEventListener('click', () => this.reconnectPlayer());
         this.startGameBtn.addEventListener('click', () => this.startGame());
         this.startRoundBtn.addEventListener('click', () => this.startNextRound());
         this.leaveGameBtn.addEventListener('click', () => this.leaveGame());
@@ -84,10 +81,6 @@ class Flip7Game {
 
         // Enter key handlers
         this.playerNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.joinGame();
-        });
-        
-        this.playerNumberInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.joinGame();
         });
     }
@@ -120,7 +113,7 @@ class Flip7Game {
             this.showStatus(data.message, 'error');
         });
 
-        this.socket.on('reconnect-failed', (data) => {
+        this.socket.on('join-failed', (data) => {
             this.showStatus(data.message, 'error');
         });
 
@@ -577,31 +570,20 @@ class Flip7Game {
 
     joinGame() {
         const playerName = this.playerNameInput.value.trim();
-        const playerNumber = this.playerNumberInput.value;
 
         if (!playerName) {
             this.showStatus('Please enter your name', 'error');
             return;
         }
 
+        // Send join request with just the player name
+        // Server will handle reconnection logic automatically
         this.socket.emit('join-game', {
-            playerName,
-            playerNumber: playerNumber ? parseInt(playerNumber) : null
+            playerName
         });
     }
 
-    reconnectPlayer() {
-        const playerNumber = this.playerNumberInput.value;
-        
-        if (!playerNumber) {
-            this.showStatus('Please enter your player number to reconnect', 'error');
-            return;
-        }
 
-        this.socket.emit('reconnect-player', {
-            playerNumber: parseInt(playerNumber)
-        });
-    }
 
     startGame() {
         this.socket.emit('start-game');
