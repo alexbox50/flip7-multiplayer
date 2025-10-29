@@ -14,7 +14,10 @@
                 <h1>Flip 7 Multiplayer</h1>
                 <div class="connection-form">
                     <input type="text" id="player-name" placeholder="Enter your name" maxlength="20" autofocus>
-                    <button id="join-btn">Join Game</button>
+                    <div class="button-group">
+                        <button id="join-btn">Join Game</button>
+                        <button id="spectate-btn">Spectate</button>
+                    </div>
                 </div>
                 <div id="connection-status"></div>
             </div>
@@ -117,6 +120,11 @@
                     <button id="drop-player-btn">Drop Player</button>
                     <button id="kick-all-restart-btn" class="danger-btn">Kick All & Restart</button>
                 </div>
+            </div>
+
+            <!-- Spectator Count -->
+            <div id="spectator-count" class="spectator-count">
+                <span id="spectator-count-text"></span>
             </div>
         </div>
     </div>

@@ -14,6 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Game state
 let gameState = {
     players: {},  // playerNumber -> {id, name, cards, connected, points, status}
+    spectators: {}, // socketId -> {id, name}
     currentPlayer: 1,
     gameStarted: false,
     roundInProgress: false,
@@ -542,6 +543,37 @@ io.on('connection', (socket) => {
 
 
 
+        });
+
+    // Handle spectator joining
+    socket.on('spectate-game', (data) => {
+        const { spectatorName } = data;
+        
+        if (!spectatorName || !spectatorName.trim()) {
+            socket.emit('join-failed', { message: 'Please enter a valid name' });
+            return;
+        }
+
+        const trimmedName = spectatorName.trim();
+        
+        // Add spectator to game state
+        gameState.spectators[socket.id] = {
+            id: socket.id,
+            name: trimmedName
+        };
+        
+        socket.isSpectator = true;
+        socket.join('game');
+        
+        socket.emit('spectator-assigned', { name: trimmedName });
+        
+        // Emit updated game state including spectator count
+        io.to('game').emit('game-state', gameState);
+        io.to('game').emit('spectator-count', { count: Object.keys(gameState.spectators).length });
+        
+        console.log(`Spectator ${trimmedName} joined`);
+    });
+
     // Handle player action (draw card, stick)
     socket.on('player-action', (data) => {
         const { action } = data; // 'draw' or 'stick'
@@ -567,6 +599,12 @@ io.on('connection', (socket) => {
             socket.emit('invalid-move', { message: 'You must select a target for your Freeze card first' });
             return;
         }
+
+        // Emit action notification for spectators
+        io.to('game').emit('player-action-performed', {
+            playerNumber,
+            action: action === 'draw' ? 'twist' : 'stick' // Convert 'draw' to 'twist' for display
+        });
 
         if (action === 'draw') {
             // First turn: must draw
@@ -966,6 +1004,13 @@ io.on('connection', (socket) => {
             freezeCard.used = true;
         }
         
+        // Emit freeze action notification for spectators
+        io.to('game').emit('freeze-target-selected-action', {
+            playerNumber,
+            targetPlayerNumber,
+            targetPlayerName: targetPlayer.name
+        });
+
         // Apply freeze effect - force target to stick
         targetPlayer.status = 'stuck';
         targetPlayer.roundPoints = calculateHandValue(targetPlayerNumber);
@@ -1238,6 +1283,11 @@ io.on('connection', (socket) => {
                 playerName: gameState.players[socket.playerNumber].name
             });
             io.to('game').emit('game-state', gameState);
+        } else if (socket.isSpectator && gameState.spectators[socket.id]) {
+            // Remove spectator from game state
+            delete gameState.spectators[socket.id];
+            io.to('game').emit('spectator-count', { count: Object.keys(gameState.spectators).length });
+            console.log('Spectator disconnected');
         }
     });
 });

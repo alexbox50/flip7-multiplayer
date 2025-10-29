@@ -20,6 +20,7 @@ class Flip7Game {
         this.gameScreen = document.getElementById('game-screen');
         this.playerNameInput = document.getElementById('player-name');
         this.joinBtn = document.getElementById('join-btn');
+        this.spectateBtn = document.getElementById('spectate-btn');
         this.connectionStatus = document.getElementById('connection-status');
 
         // Game screen elements
@@ -60,10 +61,14 @@ class Flip7Game {
         // Track game completion state for winner highlighting
         this.gameComplete = false;
         this.gameWinners = null;
+        
+        // Spectator mode
+        this.isSpectator = false;
     }
 
     setupEventListeners() {
         this.joinBtn.addEventListener('click', () => this.joinGame());
+        this.spectateBtn.addEventListener('click', () => this.spectateGame());
         this.startGameBtn.addEventListener('click', () => this.startGame());
         this.startRoundBtn.addEventListener('click', () => this.startNextRound());
         this.leaveGameBtn.addEventListener('click', () => this.leaveGame());
@@ -115,6 +120,29 @@ class Flip7Game {
 
         this.socket.on('join-failed', (data) => {
             this.showStatus(data.message, 'error');
+        });
+
+        this.socket.on('spectator-assigned', (data) => {
+            this.isSpectator = true;
+            this.spectatorName = data.name;
+            this.showMessage(`Welcome! You are spectating as ${data.name}`, 'success');
+            this.showGameScreen();
+        });
+
+        this.socket.on('spectator-count', (data) => {
+            this.updateSpectatorCount(data.count);
+        });
+
+        this.socket.on('player-action-performed', (data) => {
+            if (this.isSpectator) {
+                this.showActionPulse(data.action);
+            }
+        });
+
+        this.socket.on('freeze-target-selected-action', (data) => {
+            if (this.isSpectator) {
+                this.showActionPulse('freeze', data.targetPlayerName);
+            }
         });
 
         this.socket.on('game-state', (gameState) => {
@@ -580,6 +608,20 @@ class Flip7Game {
         // Server will handle reconnection logic automatically
         this.socket.emit('join-game', {
             playerName
+        });
+    }
+
+    spectateGame() {
+        const spectatorName = this.playerNameInput.value.trim();
+
+        if (!spectatorName) {
+            this.showStatus('Please enter your name', 'error');
+            return;
+        }
+
+        // Send spectate request
+        this.socket.emit('spectate-game', {
+            spectatorName
         });
     }
 
@@ -1894,9 +1936,11 @@ class Flip7Game {
         this.drawBtn.textContent = 'Twist';
         this.stickBtn.textContent = 'Stick';
         
-        // Update turn status text based on game state
+        // Update turn status text based on game state (hide for spectators)
         if (this.turnStatus) {
-            if (!this.gameState.roundInProgress) {
+            if (this.isSpectator) {
+                this.turnStatus.textContent = ""; // Hide turn messages for spectators
+            } else if (!this.gameState.roundInProgress) {
                 this.turnStatus.textContent = "Waiting for game to start...";
             } else if (mustSelectFreezeTarget) {
                 this.turnStatus.textContent = "Choose a player to stick with your Freeze card!";
@@ -1909,9 +1953,9 @@ class Flip7Game {
             }
         }
         
-        // Set enabled/disabled state - disable buttons if must select freeze target
-        this.drawBtn.disabled = !canAct || mustSelectFreezeTarget;
-        this.stickBtn.disabled = !canAct || mustSelectFreezeTarget || (player && !player.hasDrawnFirstCard);
+        // Set enabled/disabled state - disable buttons if must select freeze target or if spectator
+        this.drawBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget;
+        this.stickBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || (player && !player.hasDrawnFirstCard);
         
         // Hide freeze target selection if it's no longer needed
         if (!this.gameState.freezeCardActive || this.gameState.freezeCardPlayer !== this.playerNumber) {
@@ -2046,6 +2090,69 @@ class Flip7Game {
     showGameScreen() {
         this.connectionScreen.classList.add('hidden');
         this.gameScreen.classList.remove('hidden');
+    }
+
+    updateSpectatorCount(count) {
+        const spectatorCountElement = document.getElementById('spectator-count-text');
+        if (spectatorCountElement) {
+            if (count > 0) {
+                spectatorCountElement.textContent = `👀 ${count} spectator${count !== 1 ? 's' : ''}`;
+            } else {
+                spectatorCountElement.textContent = '';
+            }
+        }
+    }
+
+    showActionPulse(action, targetName = null) {
+        let targetButton;
+        if (action === 'twist') {
+            targetButton = this.drawBtn;
+        } else if (action === 'stick') {
+            targetButton = this.stickBtn;
+        } else if (action === 'freeze') {
+            targetButton = this.freezeApplyBtn;
+            
+            // Show target name above freeze button for spectators
+            if (targetName && this.isSpectator) {
+                this.showFreezeTarget(targetName);
+            }
+        }
+        
+        if (targetButton) {
+            targetButton.classList.remove('action-pulse');
+            // Force reflow to restart animation
+            targetButton.offsetHeight;
+            targetButton.classList.add('action-pulse');
+            
+            // Remove class after animation completes
+            setTimeout(() => {
+                targetButton.classList.remove('action-pulse');
+            }, 600);
+        }
+    }
+
+    showFreezeTarget(targetName) {
+        // Create or update freeze target display for spectators
+        let freezeTargetDisplay = document.getElementById('freeze-target-display');
+        if (!freezeTargetDisplay) {
+            freezeTargetDisplay = document.createElement('div');
+            freezeTargetDisplay.id = 'freeze-target-display';
+            freezeTargetDisplay.className = 'freeze-target-display';
+            
+            // Position above freeze button
+            const freezeButton = this.freezeApplyBtn;
+            if (freezeButton && freezeButton.parentNode) {
+                freezeButton.parentNode.insertBefore(freezeTargetDisplay, freezeButton);
+            }
+        }
+        
+        freezeTargetDisplay.textContent = `Target: ${targetName}`;
+        freezeTargetDisplay.style.display = 'block';
+        
+        // Hide after animation
+        setTimeout(() => {
+            freezeTargetDisplay.style.display = 'none';
+        }, 3000);
     }
 
     showStatus(message, type) {

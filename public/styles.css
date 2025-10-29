@@ -1423,3 +1423,41 @@ body {
     color: #888;
     cursor: not-allowed;
 }
+
+/* Spectator action pulse animation */
+@keyframes actionPulse {
+    0% { box-shadow: 0 0 0 0 rgba(95, 174, 237, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(95, 174, 237, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(95, 174, 237, 0); }
+}
+
+.action-pulse {
+    animation: actionPulse 0.6s ease-out;
+}
+
+/* Spectator count styling */
+.spectator-count {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.9rem;
+    color: #ccc;
+    opacity: 0.7;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* Freeze target display for spectators */
+.freeze-target-display {
+    background: rgba(70, 130, 180, 0.9);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    text-align: center;
+    display: none;
+}
