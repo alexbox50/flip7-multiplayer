@@ -753,8 +753,10 @@ class Flip7Game {
                     !(card.value === 'freeze' && card.id === this.animatingCard.card.id)
                 );
             } else {
-                // Remove the last card (most recently drawn) during normal draw animation
-                filteredCards = cards.slice(0, -1);
+                // Remove the specific animated card during normal draw animation
+                filteredCards = cards.filter(card => 
+                    !(card.id === this.animatingCard.card.id)
+                );
             }
         }
         
@@ -834,8 +836,10 @@ class Flip7Game {
                     !(card.value === 'freeze' && card.id === this.animatingCard.card.id)
                 );
             } else {
-                // Remove the last card (most recently drawn) during normal draw animation
-                filteredCards = cards.slice(0, -1);
+                // Remove the specific animated card during normal draw animation
+                filteredCards = cards.filter(card => 
+                    !(card.id === this.animatingCard.card.id)
+                );
             }
         }
         
@@ -986,8 +990,10 @@ class Flip7Game {
             
             // During animation, use previous hand value (exclude the animated card)
             if (this.animatingCard && this.animatingCard.playerNumber === parseInt(playerNumber)) {
-                // Calculate hand value without the animated card
-                const cardsWithoutAnimated = (player.cards || []).slice(0, -1); // Remove last card
+                // Calculate hand value without the specific animated card
+                const cardsWithoutAnimated = (player.cards || []).filter(card => 
+                    !(card.id === this.animatingCard.card.id)
+                );
                 const prevHandStats = this.calculateHandStats(cardsWithoutAnimated, playerNumber);
                 displayHandValue = prevHandStats.handValue;
             }
@@ -1021,9 +1027,11 @@ class Flip7Game {
             
             // For bust players, calculate what they would have scored (for display in "Current" with strikethrough)
             let bustWouldHaveScored = null;
+            let bustWouldHaveNeeded = null;
             if (player.status === 'bust' && displayStatus !== 'playing') {
-                // Only show bust styling if we're not hiding bust status during animation
-                bustWouldHaveScored = Math.max(0, 200 - (playerPoints + displayHandValue));
+                // Only calculate and show bust styling when not hiding bust status during animation
+                bustWouldHaveScored = playerPoints + displayHandValue; // What they would have scored
+                bustWouldHaveNeeded = Math.max(0, 200 - (playerPoints + displayHandValue)); // What they would have needed
             }
 
             // Create points display with SAME CSS classes as updatePlayersList() to prevent disappearing during animations
@@ -1039,8 +1047,13 @@ class Flip7Game {
             divider1.textContent = ' / ';
             
             const potentialPointsSpan = document.createElement('span');
-            potentialPointsSpan.className = 'potential-points';
-            potentialPointsSpan.textContent = calculatedPotentialPoints.toString();
+            if (player.status === 'bust' && displayStatus !== 'playing' && bustWouldHaveScored !== null) {
+                potentialPointsSpan.className = 'potential-points bust-would-have-scored';
+                potentialPointsSpan.textContent = bustWouldHaveScored.toString();
+            } else {
+                potentialPointsSpan.className = 'potential-points';
+                potentialPointsSpan.textContent = calculatedPotentialPoints.toString();
+            }
             
             pointsContainer.appendChild(currentPoints);
             pointsContainer.appendChild(divider1);
@@ -1059,9 +1072,9 @@ class Flip7Game {
             divider2.textContent = ' / ';
             
             const potentialRemaining = document.createElement('span');
-            if (player.status === 'bust' && bustWouldHaveScored !== null) {
+            if (player.status === 'bust' && bustWouldHaveNeeded !== null) {
                 potentialRemaining.className = 'potential-points bust-would-have-scored';
-                potentialRemaining.textContent = this.formatRemainingPoints(bustWouldHaveScored);
+                potentialRemaining.textContent = this.formatRemainingPoints(bustWouldHaveNeeded);
             } else {
                 potentialRemaining.className = 'potential-points';
                 potentialRemaining.textContent = this.formatRemainingPoints(potentialPointsRemaining);
@@ -1201,8 +1214,10 @@ class Flip7Game {
             
             // During animation, use previous hand value (exclude the animated card)
             if (this.animatingCard && this.animatingCard.playerNumber === parseInt(playerNumber)) {
-                // Calculate hand value without the animated card
-                const cardsWithoutAnimated = (player.cards || []).slice(0, -1); // Remove last card
+                // Calculate hand value without the specific animated card
+                const cardsWithoutAnimated = (player.cards || []).filter(card => 
+                    !(card.id === this.animatingCard.card.id)
+                );
                 const prevHandStats = this.calculateHandStats(cardsWithoutAnimated, playerNumber);
                 displayHandValue = prevHandStats.handValue;
             }
@@ -1243,9 +1258,11 @@ class Flip7Game {
             
             // For bust players, calculate what they would have scored (for display in "Current" with strikethrough)
             let bustWouldHaveScored = null;
+            let bustWouldHaveNeeded = null;
             if (player.status === 'bust' && displayStatus !== 'playing') {
-                // Only show bust styling if we're not hiding bust status during animation
-                bustWouldHaveScored = Math.max(0, 200 - (playerPoints + displayHandValue));
+                // Only calculate and show bust styling when not hiding bust status during animation
+                bustWouldHaveScored = playerPoints + displayHandValue; // What they would have scored
+                bustWouldHaveNeeded = Math.max(0, 200 - (playerPoints + displayHandValue)); // What they would have needed
             }
             
 
@@ -1265,15 +1282,18 @@ class Flip7Game {
                     <div class="dual-points">
                         <span class="current-points">${playerPoints}</span>
                         <span class="divider"> / </span>
-                        <span class="potential-points">${potentialPoints}</span>
+                        ${player.status === 'bust' && displayStatus !== 'playing' && bustWouldHaveScored !== null ? 
+                            `<span class="potential-points bust-would-have-scored">${bustWouldHaveScored}</span>` :
+                            `<span class="potential-points">${potentialPoints}</span>`
+                        }
                     </div>
                 </td>
                 <td class="points-remaining-cell">
                     <div class="dual-points">
                         <span class="current-remaining">${pointsRemaining}</span>
                         <span class="divider"> / </span>
-                        ${player.status === 'bust' && bustWouldHaveScored !== null ? 
-                            `<span class="potential-remaining bust-would-have-scored">${this.formatRemainingPoints(bustWouldHaveScored)}</span>` :
+                        ${player.status === 'bust' && bustWouldHaveNeeded !== null ? 
+                            `<span class="potential-remaining bust-would-have-scored">${this.formatRemainingPoints(bustWouldHaveNeeded)}</span>` :
                             `<span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${this.formatRemainingPoints(potentialPointsRemaining)}</span>`
                         }
                         ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? '<span class="potential-crown">👑</span>' : ''}
@@ -2102,8 +2122,10 @@ class Flip7Game {
                     !(card.value === 'freeze' && card.id === this.animatingCard.card.id)
                 );
             } else {
-                // Remove the last card (most recently drawn) during normal draw animation
-                filteredCards = cards.slice(0, -1);
+                // Remove the specific animated card during normal draw animation
+                filteredCards = cards.filter(card => 
+                    !(card.id === this.animatingCard.card.id)
+                );
             }
             
             if (filteredCards.length === 0) {
