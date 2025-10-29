@@ -214,7 +214,7 @@ body {
 
 /* Color styling for Current Hand Points header */
 .players-table th:nth-child(7)  /* Current Hand Points */ {
-    color: #5faeed;
+    color: white;
 }
 
 /* Multi-line header styling */
@@ -561,20 +561,16 @@ body {
 
 
 .game-winner {
-    border: 2px solid #FFD700 !important;
     animation: winner-glow 2s ease-in-out infinite !important;
     margin: 4px 0 !important;
     position: relative;
     z-index: 10;
-    border-radius: 8px !important;
     background: rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Ensure game winner styling takes precedence over current-turn */
 .game-winner.current-turn {
-    border: 2px solid #FFD700 !important;
     animation: winner-glow 2s ease-in-out infinite !important;
-    border-radius: 8px !important;
     background: rgba(0, 0, 0, 0.3) !important;
 }
 
