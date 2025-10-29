@@ -1076,13 +1076,21 @@ class Flip7Game {
                 potentialRemaining.className = 'potential-points bust-would-have-scored';
                 potentialRemaining.textContent = this.formatRemainingPoints(bustWouldHaveNeeded);
             } else {
-                potentialRemaining.className = 'potential-points';
+                potentialRemaining.className = `potential-points${potentialPointsRemaining <= 0 ? ' potential-winner' : ''}`;
                 potentialRemaining.textContent = this.formatRemainingPoints(potentialPointsRemaining);
             }
             
             pointsRemainingContainer.appendChild(remainingPoints);
             pointsRemainingContainer.appendChild(divider2);
             pointsRemainingContainer.appendChild(potentialRemaining);
+            
+            // Add crown emoji for potential winners (same logic as updatePlayersList)
+            if (potentialPointsRemaining <= 0 && player.status !== 'bust') {
+                const crownSpan = document.createElement('span');
+                crownSpan.className = 'potential-crown';
+                crownSpan.textContent = '👑';
+                pointsRemainingContainer.appendChild(crownSpan);
+            }
 
             existingRow.innerHTML = `
                 <td class="rank-cell">
