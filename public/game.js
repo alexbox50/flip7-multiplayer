@@ -2090,6 +2090,31 @@ class Flip7Game {
     showGameScreen() {
         this.connectionScreen.classList.add('hidden');
         this.gameScreen.classList.remove('hidden');
+        
+        // Apply spectator-specific UI changes
+        if (this.isSpectator) {
+            this.applySpectatorUI();
+        }
+    }
+
+    applySpectatorUI() {
+        // Hide the entire player-actions section for spectators
+        const playerActions = document.querySelector('.player-actions');
+        if (playerActions) {
+            playerActions.style.display = 'none';
+        }
+        
+        // Hide game control buttons for spectators
+        const gameControls = document.querySelector('.game-controls');
+        if (gameControls) {
+            gameControls.style.display = 'none';
+        }
+        
+        // Make the deck area span full width by adding class to the container
+        const combinedGameSection = document.querySelector('.combined-game-section');
+        if (combinedGameSection) {
+            combinedGameSection.classList.add('spectator-fullwidth');
+        }
     }
 
     updateSpectatorCount(count) {
@@ -2104,6 +2129,15 @@ class Flip7Game {
     }
 
     showActionPulse(action, targetName = null) {
+        // Spectators don't see action buttons, so no pulse animation needed
+        if (this.isSpectator) {
+            // Show target name for freeze actions
+            if (action === 'freeze' && targetName) {
+                this.showFreezeTarget(targetName);
+            }
+            return;
+        }
+
         let targetButton;
         if (action === 'twist') {
             targetButton = this.drawBtn;
@@ -2111,11 +2145,6 @@ class Flip7Game {
             targetButton = this.stickBtn;
         } else if (action === 'freeze') {
             targetButton = this.freezeApplyBtn;
-            
-            // Show target name above freeze button for spectators
-            if (targetName && this.isSpectator) {
-                this.showFreezeTarget(targetName);
-            }
         }
         
         if (targetButton) {
