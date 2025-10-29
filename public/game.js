@@ -1416,7 +1416,7 @@ class Flip7Game {
                 const suitSymbol = this.getCardSuit(topCard.value);
                 let displayValue = topCard.value;
                 if (topCard.value === 'freeze') displayValue = '❄';
-                else if (topCard.value === 'second-chance') displayValue = '🔄';
+                else if (topCard.value === 'second-chance') displayValue = '✚';
                 else if (topCard.value === 'bonus') displayValue = topCard.bonusPoints;
                 else if (topCard.value === 'multiplier') displayValue = topCard.multiplier;
                 
@@ -1608,7 +1608,7 @@ class Flip7Game {
             
             let displayValue = drawnCard.value;
             if (drawnCard.value === 'freeze') displayValue = '❄';
-            else if (drawnCard.value === 'second-chance') displayValue = '🔄';
+            else if (drawnCard.value === 'second-chance') displayValue = '✚';
             else if (drawnCard.value === 'bonus') displayValue = drawnCard.bonusPoints;
             else if (drawnCard.value === 'multiplier') displayValue = drawnCard.multiplier;
             
@@ -1934,7 +1934,7 @@ class Flip7Game {
                         <div class="card-suit"> </div>
                     </div>
                     <div class="card-center">
-                        <div class="card-value-large">🔄</div>
+                        <div class="card-value-large">✚</div>
                     </div>
                     <div class="card-corner card-corner-bottom">
                         <div class="card-rank">Chance</div>
@@ -1999,7 +1999,7 @@ class Flip7Game {
     getCardSuit(value) {
         // Handle special cards
         if (value === 'freeze') return '❄️'; // Snowflake emoji for freeze cards
-        if (value === 'second-chance') return '🔄'; // Refresh emoji for second chance cards
+        if (value === 'second-chance') return '✚'; // Cross symbol for second chance cards (health/medical theme)
         if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
         if (value === 'multiplier') return '×'; // Multiplication symbol for multiplier cards
         
@@ -2124,7 +2124,7 @@ class Flip7Game {
             
             let displayValue = card.value;
             if (card.value === 'freeze') displayValue = '❄';
-            else if (card.value === 'second-chance') displayValue = '🔄';
+            else if (card.value === 'second-chance') displayValue = '✚';
             else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
             else if (card.value === 'multiplier') displayValue = card.multiplier || '?';
             
@@ -2353,7 +2353,7 @@ class Flip7Game {
             cardColor = '#4682B4';
             cardBackground = 'linear-gradient(145deg, #E0F6FF 0%, #B0E0E6 100%)';
         } else if (card.value === 'second-chance') {
-            displayValue = '🔄';
+            displayValue = '✚';
             cardColor = '#28a745';
             cardBackground = 'linear-gradient(145deg, #e8f5e8 0%, #d4edda 100%)';
         } else if (colorClass === 'red-card') {
