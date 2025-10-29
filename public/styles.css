@@ -368,6 +368,11 @@ body {
     filter: grayscale(50%);
 }
 
+.potential-crown.game-winner-trophy {
+    opacity: 1;
+    filter: none;
+}
+
 .status-cell {
     width: 80px;
     text-align: center;

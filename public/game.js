@@ -1093,12 +1093,14 @@ class Flip7Game {
             pointsRemainingContainer.appendChild(divider2);
             pointsRemainingContainer.appendChild(potentialRemaining);
             
-            // Add crown emoji for potential winners (same logic as updatePlayersList)
+            // Add trophy emoji for potential winners (same logic as updatePlayersList)
             if (potentialPointsRemaining <= 0 && player.status !== 'bust') {
-                const crownSpan = document.createElement('span');
-                crownSpan.className = 'potential-crown';
-                crownSpan.textContent = '👑';
-                pointsRemainingContainer.appendChild(crownSpan);
+                const trophySpan = document.createElement('span');
+                // Make trophy fully opaque if player has actually won the game
+                const isGameWinner = this.gameComplete && this.gameWinners && this.gameWinners.includes(parseInt(playerNumber));
+                trophySpan.className = isGameWinner ? 'potential-crown game-winner-trophy' : 'potential-crown';
+                trophySpan.textContent = '🏆';
+                pointsRemainingContainer.appendChild(trophySpan);
             }
 
             existingRow.innerHTML = `
@@ -1317,7 +1319,10 @@ class Flip7Game {
                             `<span class="potential-remaining bust-would-have-scored">${this.formatRemainingPoints(bustWouldHaveNeeded)}</span>` :
                             `<span class="potential-remaining ${potentialPointsRemaining <= 0 ? 'potential-winner' : ''}">${this.formatRemainingPoints(potentialPointsRemaining)}</span>`
                         }
-                        ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? '<span class="potential-crown">👑</span>' : ''}
+                        ${potentialPointsRemaining <= 0 && player.status !== 'bust' ? 
+                            `<span class="potential-crown${this.gameComplete && this.gameWinners && this.gameWinners.includes(parseInt(playerNumber)) ? ' game-winner-trophy' : ''}">🏆</span>` : 
+                            ''
+                        }
                     </div>
                 </td>
                 <td class="status-cell">
