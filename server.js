@@ -541,10 +541,6 @@ io.on('connection', (socket) => {
         }
     });
 
-
-
-        });
-
     // Handle spectator joining
     socket.on('spectate-game', (data) => {
         const { spectatorName } = data;
