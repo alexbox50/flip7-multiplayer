@@ -691,7 +691,12 @@ class Flip7Game {
     }
 
     // Helper function to format status display text
-    formatStatusDisplay(status) {
+    formatStatusDisplay(status, playerNumber = null) {
+        // If game is complete and this player is a winner, show WIN instead of STUCK/FLIP7
+        if (this.gameComplete && this.gameWinners && playerNumber && this.gameWinners.includes(parseInt(playerNumber))) {
+            return 'WIN';
+        }
+        
         if (status === 'flip7') {
             return 'FLIP 7';
         }
@@ -975,7 +980,11 @@ class Flip7Game {
                 displayStatus = 'playing'; // Show as playing during animation
             }
             
-            const statusClass = `status-${displayStatus}`;
+            // Generate status class, considering winner override
+            let statusClass = `status-${displayStatus}`;
+            if (this.gameComplete && this.gameWinners && this.gameWinners.includes(parseInt(playerNumber))) {
+                statusClass = 'status-win';
+            }
 
             const playerPoints = player.points || 0;
             let pointsDisplay = `${playerPoints}`;
@@ -1106,7 +1115,7 @@ class Flip7Game {
                 <td class="points-cell"></td>
                 <td class="points-remaining-cell"></td>
                 <td class="status-cell">
-                    <span class="status-indicator ${statusClass}">${this.formatStatusDisplay(displayStatus)}</span>
+                    <span class="status-indicator ${statusClass}">${this.formatStatusDisplay(displayStatus, playerNumber)}</span>
                 </td>
                 <td class="hand-value-cell">
                     <span class="${displayStatus === 'bust' ? 'bust-hand-value' : ''}">
@@ -1207,7 +1216,11 @@ class Flip7Game {
                 displayStatus = 'playing'; // Show as playing during animation
             }
             
-            const statusClass = `status-${displayStatus}`;
+            // Generate status class, considering winner override
+            let statusClass = `status-${displayStatus}`;
+            if (this.gameComplete && this.gameWinners && this.gameWinners.includes(parseInt(playerNumber))) {
+                statusClass = 'status-win';
+            }
             
             // Get ranking display
             const playerRank = rankingMap.get(playerNumber) || playersByNumber.length;
@@ -1308,7 +1321,7 @@ class Flip7Game {
                     </div>
                 </td>
                 <td class="status-cell">
-                    <span class="status-indicator ${statusClass}">${this.formatStatusDisplay(displayStatus)}</span>
+                    <span class="status-indicator ${statusClass}">${this.formatStatusDisplay(displayStatus, playerNumber)}</span>
                 </td>
                 <td class="hand-value-cell">
                     <span class="${displayStatus === 'bust' ? 'bust-hand-value' : ''}">

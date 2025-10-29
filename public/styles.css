@@ -539,6 +539,12 @@ body {
     font-weight: bold;
 }
 
+.status-win {
+    background: rgba(255, 215, 0, 0.3);
+    color: #FFD700;
+    font-weight: bold;
+}
+
 .scoring-info {
     background: rgba(255, 255, 255, 0.1);
     padding: 15px;
