@@ -652,7 +652,8 @@ io.on('connection', (socket) => {
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.playerNumber !== playerNumber && 
                             p.status === 'playing' && 
-                            p.cards.length > 0
+                            p.cards.length > 0 &&
+                            !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
                         );
                         
                         if (activePlayers.length > 0) {
@@ -695,7 +696,7 @@ io.on('connection', (socket) => {
                             io.to('game').emit('second-chance-discarded', {
                                 playerNumber,
                                 playerName: player.name,
-                                reason: 'no-other-players'
+                                reason: 'no-eligible-players'
                             });
                             
                             nextPlayer();
@@ -787,7 +788,8 @@ io.on('connection', (socket) => {
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.playerNumber !== playerNumber && 
                             p.status === 'playing' && 
-                            p.cards.length > 0
+                            p.cards.length > 0 &&
+                            !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
                         );
                         
                         if (activePlayers.length > 0) {
@@ -830,7 +832,7 @@ io.on('connection', (socket) => {
                             io.to('game').emit('second-chance-discarded', {
                                 playerNumber,
                                 playerName: player.name,
-                                reason: 'no-other-players'
+                                reason: 'no-eligible-players'
                             });
                             
                             // Check if round should end
