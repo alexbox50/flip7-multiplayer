@@ -2489,6 +2489,8 @@ class Flip7Game {
     }
 
     showDuplicateSecondChanceUI(data) {
+        console.log('showDuplicateSecondChanceUI called with data:', data);
+        
         // Follow the same pattern as freeze target selection
         // Hide the normal action buttons
         this.drawBtn.classList.add('hidden');
@@ -2496,12 +2498,17 @@ class Flip7Game {
         
         // Populate the select with available players
         this.secondChanceTargetSelect.innerHTML = '<option value="">Choose player...</option>';
+        console.log('Available players:', data.availablePlayers);
+        
         data.availablePlayers.forEach(player => {
+            console.log('Adding option:', player.playerNumber, player.name);
             const option = document.createElement('option');
             option.value = player.playerNumber;
             option.textContent = player.name;
             this.secondChanceTargetSelect.appendChild(option);
         });
+        
+        console.log('Final select options count:', this.secondChanceTargetSelect.options.length);
         
         // Show the Second Chance selection UI
         this.secondChanceTargetSelect.classList.remove('hidden');
@@ -2527,13 +2534,23 @@ class Flip7Game {
     }
 
     updateSecondChanceGiveButton() {
-        this.secondChanceGiveBtn.disabled = !this.secondChanceTargetSelect.value;
+        const hasValue = !!this.secondChanceTargetSelect.value;
+        console.log('updateSecondChanceGiveButton - select value:', this.secondChanceTargetSelect.value, 'hasValue:', hasValue);
+        this.secondChanceGiveBtn.disabled = !hasValue;
+        console.log('Button disabled state:', this.secondChanceGiveBtn.disabled);
     }
 
     giveSecondChance() {
+        console.log('giveSecondChance() called');
+        console.log('Select element:', this.secondChanceTargetSelect);
+        console.log('Select value:', this.secondChanceTargetSelect.value);
+        console.log('Select options count:', this.secondChanceTargetSelect.options.length);
+        
         const targetPlayerNumber = parseInt(this.secondChanceTargetSelect.value);
+        console.log('Parsed target player number:', targetPlayerNumber);
+        
         if (!targetPlayerNumber) {
-            console.log('No target player selected');
+            console.log('No target player selected - value is empty or invalid');
             return;
         }
         
