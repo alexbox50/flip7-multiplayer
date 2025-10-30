@@ -43,6 +43,10 @@ class Flip7Game {
         this.freezeTargetSelect = document.getElementById('freeze-target-select');
         this.freezeApplyBtn = document.getElementById('freeze-apply-btn');
         
+        // Second Chance target selection elements
+        this.secondChanceTargetSelect = document.getElementById('second-chance-target-select');
+        this.secondChanceGiveBtn = document.getElementById('second-chance-give-btn');
+        
         // handCards element removed - cards now displayed in main players table
         // this.currentTurn element removed - turn indication now handled by table row highlighting
         // this.gameMessage element removed - game info now shown in table
@@ -78,6 +82,10 @@ class Flip7Game {
         // Freeze target selection
         this.freezeTargetSelect.addEventListener('change', () => this.updateFreezeApplyButton());
         this.freezeApplyBtn.addEventListener('click', () => this.applyFreeze());
+        
+        // Second Chance target selection
+        this.secondChanceTargetSelect.addEventListener('change', () => this.updateSecondChanceGiveButton());
+        this.secondChanceGiveBtn.addEventListener('click', () => this.giveSecondChance());
         
         // Admin controls
         this.restartGameBtn.addEventListener('click', () => this.restartGame());
@@ -2451,51 +2459,56 @@ class Flip7Game {
     }
 
     showDuplicateSecondChanceUI(data) {
-        // Create UI elements for selecting another player to give the Second Chance card to
-        const gameArea = document.querySelector('.game-area');
+        // Follow the same pattern as freeze target selection
+        // Hide the normal action buttons
+        this.drawBtn.classList.add('hidden');
+        this.stickBtn.classList.add('hidden');
         
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'duplicate-second-chance-overlay';
-        overlay.innerHTML = `
-            <div class="duplicate-second-chance-modal">
-                <h3>Duplicate Second Chance Card</h3>
-                <p>You already have a Second Chance card in your hand. Pick another player to receive your duplicate Second Chance card:</p>
-                <select id="player-select" class="player-select">
-                    <option value="">Select a player...</option>
-                    ${data.availablePlayers.map(player => 
-                        `<option value="${player.playerNumber}">${player.name}</option>`
-                    ).join('')}
-                </select>
-                <button id="pick-player-btn" class="pick-player-btn" disabled>Pick Player</button>
-            </div>
-        `;
-        
-        gameArea.appendChild(overlay);
-        
-        // Add event listeners
-        const playerSelect = document.getElementById('player-select');
-        const pickPlayerBtn = document.getElementById('pick-player-btn');
-        
-        playerSelect.addEventListener('change', () => {
-            pickPlayerBtn.disabled = !playerSelect.value;
+        // Populate the select with available players
+        this.secondChanceTargetSelect.innerHTML = '<option value="">Choose player...</option>';
+        data.availablePlayers.forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.playerNumber;
+            option.textContent = player.name;
+            this.secondChanceTargetSelect.appendChild(option);
         });
         
-        pickPlayerBtn.addEventListener('click', () => {
-            const targetPlayerNumber = parseInt(playerSelect.value);
-            if (targetPlayerNumber) {
-                this.socket.emit('give-second-chance', {
-                    targetPlayerNumber: targetPlayerNumber
-                });
-            }
-        });
+        // Show the Second Chance selection UI
+        this.secondChanceTargetSelect.classList.remove('hidden');
+        this.secondChanceGiveBtn.classList.remove('hidden');
+        
+        // Update turn status
+        this.turnStatus.textContent = 'Give duplicate Second Chance card to another player';
     }
 
     hideDuplicateSecondChanceUI() {
-        const overlay = document.querySelector('.duplicate-second-chance-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
+        // Hide the Second Chance selection UI
+        this.secondChanceTargetSelect.classList.add('hidden');
+        this.secondChanceGiveBtn.classList.add('hidden');
+        this.secondChanceTargetSelect.value = '';
+        this.secondChanceGiveBtn.disabled = true;
+        
+        // Show the normal action buttons again
+        this.drawBtn.classList.remove('hidden');
+        this.stickBtn.classList.remove('hidden');
+        
+        // Reset turn status
+        this.turnStatus.textContent = 'Your Turn';
+    }
+
+    updateSecondChanceGiveButton() {
+        this.secondChanceGiveBtn.disabled = !this.secondChanceTargetSelect.value;
+    }
+
+    giveSecondChance() {
+        const targetPlayerNumber = parseInt(this.secondChanceTargetSelect.value);
+        if (!targetPlayerNumber) return;
+        
+        this.socket.emit('give-second-chance', {
+            targetPlayerNumber: targetPlayerNumber
+        });
+        
+        this.hideDuplicateSecondChanceUI();
     }
 
     animateFreezeCardToDiscard(playerNumber, freezeCard) {

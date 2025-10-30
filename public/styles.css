@@ -1424,7 +1424,42 @@ body {
     cursor: not-allowed;
 }
 
+/* Second Chance target selection styling */
+.second-chance-select {
+    padding: 8px 12px;
+    border: 2px solid #FFB347;
+    border-radius: 5px;
+    background: white;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    min-width: 200px;
+}
 
+.second-chance-select:focus {
+    outline: none;
+    border-color: #FF8C00;
+    box-shadow: 0 0 5px rgba(255, 140, 0, 0.3);
+}
+
+.second-chance-btn {
+    background: linear-gradient(135deg, #FFB347, #FF8C00);
+    color: white;
+    border: none;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.second-chance-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, #FF8C00, #CC7000);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
+}
+
+.second-chance-btn:disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
 
 /* Spectator count styling */
 .spectator-count {
