@@ -632,10 +632,14 @@ class Flip7Game {
 
         this.socket.on('second-chance-discarded', (data) => {
             if (data.reason === 'no-eligible-players') {
-                this.showMessage(
-                    `${data.playerName} discarded duplicate Second Chance card (no eligible players without Second Chance cards)`, 
-                    'info'
-                );
+                // Animate the duplicate Second Chance card to discard pile
+                this.animateCardToDiscard(data.card, data.playerNumber, () => {
+                    // Show message after animation completes
+                    this.showMessage(
+                        `${data.playerName} discarded duplicate Second Chance card (no eligible players without Second Chance cards)`, 
+                        'info'
+                    );
+                });
             }
         });
     }

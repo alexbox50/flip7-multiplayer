@@ -58,7 +58,7 @@ function createDeck() {
     }
     
     // Add 3 Second Chance cards
-    for (let count = 0; count < 60; count++) {
+    for (let count = 0; count < 100; count++) {
         deck.push({ value: 'second-chance', id: `second-chance-${count}` });
     }
     
@@ -659,7 +659,7 @@ io.on('connection', (socket) => {
                         console.log('Multiple Second Chance cards detected - initiating duplicate handling (FIRST DRAW)');
                         // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
-                            p.playerNumber !== playerNumber && 
+                            p.number !== playerNumber && 
                             p.status === 'playing' && 
                             p.cards.length > 0 &&
                             !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
@@ -673,7 +673,7 @@ io.on('connection', (socket) => {
                                 playerNumber: playerNumber,
                                 card: drawnCard,
                                 availablePlayers: activePlayers.map(p => ({
-                                    playerNumber: p.playerNumber,
+                                    playerNumber: p.number,
                                     name: p.name
                                 }))
                             };
@@ -696,9 +696,8 @@ io.on('connection', (socket) => {
                             io.to('game').emit('game-state', gameState);
                             return;
                         } else {
-                            // No other players - discard automatically
-                            gameState.discardPile.push(drawnCard);
-                            
+                            // No other players - discard automatically after a brief delay
+                            // First show the card being drawn normally
                             io.to('game').emit('card-drawn', {
                                 playerNumber,
                                 playerName: player.name,
@@ -706,14 +705,35 @@ io.on('connection', (socket) => {
                                 isFirstCard: true
                             });
                             
-                            io.to('game').emit('second-chance-discarded', {
-                                playerNumber,
-                                playerName: player.name,
-                                reason: 'no-eligible-players'
-                            });
-                            
-                            nextPlayer();
                             io.to('game').emit('game-state', gameState);
+                            
+                            // Wait 1.5 seconds before starting auto-discard animation
+                            setTimeout(() => {
+                                // Start the discard animation on client
+                                io.to('game').emit('second-chance-discarded', {
+                                    playerNumber,
+                                    playerName: player.name,
+                                    card: drawnCard,
+                                    reason: 'no-eligible-players'
+                                });
+                                
+                                // Wait for animation to complete before updating game state
+                                setTimeout(() => {
+                                    // Remove the duplicate Second Chance card from the player's hand
+                                    const cardIndex = player.cards.findIndex(card => 
+                                        card.value === 'second-chance' && card.id === drawnCard.id
+                                    );
+                                    if (cardIndex !== -1) {
+                                        player.cards.splice(cardIndex, 1);
+                                    }
+                                    
+                                    gameState.discardPile.push(drawnCard);
+                                    
+                                    nextPlayer();
+                                    io.to('game').emit('game-state', gameState);
+                                }, 1250); // Animation takes 1.25 seconds
+                            }, 1500);
+                            
                             return;
                         }
                     } else {
@@ -805,7 +825,7 @@ io.on('connection', (socket) => {
                         console.log('Multiple Second Chance cards detected - initiating duplicate handling (SECOND DRAW)');
                         // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
-                            p.playerNumber !== playerNumber && 
+                            p.number !== playerNumber && 
                             p.status === 'playing' && 
                             p.cards.length > 0 &&
                             !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
@@ -817,7 +837,7 @@ io.on('connection', (socket) => {
                                 playerNumber: playerNumber,
                                 card: drawnCard,
                                 availablePlayers: activePlayers.map(p => ({
-                                    playerNumber: p.playerNumber,
+                                    playerNumber: p.number,
                                     name: p.name
                                 }))
                             };
@@ -838,9 +858,8 @@ io.on('connection', (socket) => {
                             io.to('game').emit('game-state', gameState);
                             return;
                         } else {
-                            // No other players - discard automatically
-                            gameState.discardPile.push(drawnCard);
-                            
+                            // No other players - discard automatically after a brief delay
+                            // First show the card being drawn normally
                             io.to('game').emit('card-drawn', {
                                 playerNumber,
                                 playerName: player.name,
@@ -848,19 +867,40 @@ io.on('connection', (socket) => {
                                 isFirstCard: false
                             });
                             
-                            io.to('game').emit('second-chance-discarded', {
-                                playerNumber,
-                                playerName: player.name,
-                                reason: 'no-eligible-players'
-                            });
-                            
-                            // Check if round should end
-                            if (checkRoundEnd()) {
-                                endRound();
-                            } else {
-                                nextPlayer();
-                            }
                             io.to('game').emit('game-state', gameState);
+                            
+                            // Wait 1.5 seconds before starting auto-discard animation
+                            setTimeout(() => {
+                                // Start the discard animation on client
+                                io.to('game').emit('second-chance-discarded', {
+                                    playerNumber,
+                                    playerName: player.name,
+                                    card: drawnCard,
+                                    reason: 'no-eligible-players'
+                                });
+                                
+                                // Wait for animation to complete before updating game state
+                                setTimeout(() => {
+                                    // Remove the duplicate Second Chance card from the player's hand
+                                    const cardIndex = player.cards.findIndex(card => 
+                                        card.value === 'second-chance' && card.id === drawnCard.id
+                                    );
+                                    if (cardIndex !== -1) {
+                                        player.cards.splice(cardIndex, 1);
+                                    }
+                                    
+                                    gameState.discardPile.push(drawnCard);
+                                    
+                                    // Check if round should end
+                                    if (checkRoundEnd()) {
+                                        endRound();
+                                    } else {
+                                        nextPlayer();
+                                    }
+                                    io.to('game').emit('game-state', gameState);
+                                }, 1250); // Animation takes 1.25 seconds
+                            }, 1500);
+                            
                             return;
                         }
                     } else {
