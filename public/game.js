@@ -604,7 +604,10 @@ class Flip7Game {
         });
 
         this.socket.on('duplicate-second-chance', (data) => {
-            this.showDuplicateSecondChanceUI(data);
+            // Only show UI for the player who drew the duplicate card
+            if (data.playerNumber === this.playerNumber && !this.isSpectator) {
+                this.showDuplicateSecondChanceUI(data);
+            }
         });
 
         this.socket.on('second-chance-transferred', (data) => {
@@ -612,7 +615,11 @@ class Flip7Game {
                 `${data.fromPlayerName} gave their duplicate Second Chance card to ${data.toPlayerName}`, 
                 'info'
             );
-            this.hideDuplicateSecondChanceUI();
+            
+            // Hide the UI for the player who gave the card
+            if (data.fromPlayerNumber === this.playerNumber) {
+                this.hideDuplicateSecondChanceUI();
+            }
         });
 
         this.socket.on('second-chance-discarded', (data) => {
@@ -1961,6 +1968,10 @@ class Flip7Game {
         const mustSelectFreezeTarget = this.gameState.freezeCardActive && 
                                       this.gameState.freezeCardPlayer === this.playerNumber;
         
+        // Check if this player drew a duplicate Second Chance card and must select a recipient
+        const mustSelectSecondChanceRecipient = this.gameState.duplicateSecondChance && 
+                                               this.gameState.duplicateSecondChance.playerNumber === this.playerNumber;
+        
         // Always keep consistent button text
         this.drawBtn.textContent = 'Twist';
         this.stickBtn.textContent = 'Stick';
@@ -1973,6 +1984,8 @@ class Flip7Game {
                 this.turnStatus.textContent = "Waiting for game to start...";
             } else if (mustSelectFreezeTarget) {
                 this.turnStatus.textContent = "Choose a player to stick with your Freeze card!";
+            } else if (mustSelectSecondChanceRecipient) {
+                this.turnStatus.textContent = "Give duplicate Second Chance card to another player";
             } else if (canAct) {
                 // Only show "It's your turn!" when buttons are actually enabled
                 this.turnStatus.textContent = "It's your turn!";
@@ -1982,13 +1995,18 @@ class Flip7Game {
             }
         }
         
-        // Set enabled/disabled state - disable buttons if must select freeze target or if spectator
-        this.drawBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget;
-        this.stickBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || (player && !player.hasDrawnFirstCard);
+        // Set enabled/disabled state - disable buttons if must select freeze target, must select second chance recipient, or if spectator
+        this.drawBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient;
+        this.stickBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || (player && !player.hasDrawnFirstCard);
         
         // Hide freeze target selection if it's no longer needed
         if (!this.gameState.freezeCardActive || this.gameState.freezeCardPlayer !== this.playerNumber) {
             this.hideFreezeTargetSelection();
+        }
+        
+        // Hide duplicate Second Chance selection if it's no longer needed
+        if (!this.gameState.duplicateSecondChance || this.gameState.duplicateSecondChance.playerNumber !== this.playerNumber) {
+            this.hideDuplicateSecondChanceUI();
         }
     }
 

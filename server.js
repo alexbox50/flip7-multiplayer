@@ -58,7 +58,7 @@ function createDeck() {
     }
     
     // Add 3 Second Chance cards
-    for (let count = 0; count < 3; count++) {
+    for (let count = 0; count < 30; count++) {
         deck.push({ value: 'second-chance', id: `second-chance-${count}` });
     }
     
@@ -644,11 +644,11 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Second Chance card
                 if (drawnCard.value === 'second-chance') {
-                    // Check if player already has a Second Chance card
+                    // Check if player now has multiple Second Chance cards (including the one just drawn)
                     const existingSecondChanceCards = player.cards.filter(c => c.value === 'second-chance');
                     
-                    if (existingSecondChanceCards.length > 0) {
-                        // Player already has a Second Chance card - need to give it to another player or discard
+                    if (existingSecondChanceCards.length >= 2) {
+                        // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.playerNumber !== playerNumber && 
                             p.status === 'playing' && 
@@ -780,11 +780,11 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Second Chance card
                 if (drawnCard.value === 'second-chance') {
-                    // Check if player already has a Second Chance card
+                    // Check if player now has multiple Second Chance cards (including the one just drawn)
                     const existingSecondChanceCards = player.cards.filter(c => c.value === 'second-chance');
                     
-                    if (existingSecondChanceCards.length > 0) {
-                        // Player already has a Second Chance card - need to give it to another player or discard
+                    if (existingSecondChanceCards.length >= 2) {
+                        // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.playerNumber !== playerNumber && 
                             p.status === 'playing' && 
@@ -1239,8 +1239,16 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Give the duplicate Second Chance card to the target player
+        // Remove the duplicate Second Chance card from the current player's hand
         const duplicateCard = gameState.duplicateSecondChance.card;
+        const cardIndex = player.cards.findIndex(card => 
+            card.value === 'second-chance' && card.id === duplicateCard.id
+        );
+        if (cardIndex !== -1) {
+            player.cards.splice(cardIndex, 1);
+        }
+        
+        // Give the duplicate Second Chance card to the target player
         targetPlayer.cards.push(duplicateCard);
         
         // Clear duplicate Second Chance state
