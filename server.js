@@ -644,17 +644,77 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Second Chance card
                 if (drawnCard.value === 'second-chance') {
-                    // Second Chance cards are kept in hand and turn ends normally
-                    io.to('game').emit('card-drawn', {
-                        playerNumber,
-                        playerName: player.name,
-                        card: drawnCard,
-                        isFirstCard: true
-                    });
+                    // Check if player already has a Second Chance card
+                    const existingSecondChanceCards = player.cards.filter(c => c.value === 'second-chance');
                     
-                    nextPlayer();
-                    io.to('game').emit('game-state', gameState);
-                    return;
+                    if (existingSecondChanceCards.length > 0) {
+                        // Player already has a Second Chance card - need to give it to another player or discard
+                        const activePlayers = Object.values(gameState.players).filter(p => 
+                            p.playerNumber !== playerNumber && 
+                            p.status === 'playing' && 
+                            p.cards.length > 0
+                        );
+                        
+                        if (activePlayers.length > 0) {
+                            // Show UI to pick another player
+                            gameState.duplicateSecondChance = {
+                                playerNumber: playerNumber,
+                                card: drawnCard,
+                                availablePlayers: activePlayers.map(p => ({
+                                    playerNumber: p.playerNumber,
+                                    name: p.name
+                                }))
+                            };
+                            
+                            io.to('game').emit('card-drawn', {
+                                playerNumber,
+                                playerName: player.name,
+                                card: drawnCard,
+                                isFirstCard: true
+                            });
+                            
+                            io.to('game').emit('duplicate-second-chance', {
+                                playerNumber,
+                                playerName: player.name,
+                                availablePlayers: gameState.duplicateSecondChance.availablePlayers
+                            });
+                            
+                            io.to('game').emit('game-state', gameState);
+                            return;
+                        } else {
+                            // No other players - discard automatically
+                            gameState.discardPile.push(drawnCard);
+                            
+                            io.to('game').emit('card-drawn', {
+                                playerNumber,
+                                playerName: player.name,
+                                card: drawnCard,
+                                isFirstCard: true
+                            });
+                            
+                            io.to('game').emit('second-chance-discarded', {
+                                playerNumber,
+                                playerName: player.name,
+                                reason: 'no-other-players'
+                            });
+                            
+                            nextPlayer();
+                            io.to('game').emit('game-state', gameState);
+                            return;
+                        }
+                    } else {
+                        // First Second Chance card - keep in hand normally
+                        io.to('game').emit('card-drawn', {
+                            playerNumber,
+                            playerName: player.name,
+                            card: drawnCard,
+                            isFirstCard: true
+                        });
+                        
+                        nextPlayer();
+                        io.to('game').emit('game-state', gameState);
+                        return;
+                    }
                 }
                 
                 // Check if it's a Bonus Points card
@@ -719,22 +779,87 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Second Chance card
                 if (drawnCard.value === 'second-chance') {
-                    // Second Chance cards are kept in hand and turn ends
-                    io.to('game').emit('card-drawn', {
-                        playerNumber,
-                        playerName: player.name,
-                        card: drawnCard,
-                        isFirstCard: false
-                    });
+                    // Check if player already has a Second Chance card
+                    const existingSecondChanceCards = player.cards.filter(c => c.value === 'second-chance');
                     
-                    // Check if round should end
-                    if (checkRoundEnd()) {
-                        endRound();
+                    if (existingSecondChanceCards.length > 0) {
+                        // Player already has a Second Chance card - need to give it to another player or discard
+                        const activePlayers = Object.values(gameState.players).filter(p => 
+                            p.playerNumber !== playerNumber && 
+                            p.status === 'playing' && 
+                            p.cards.length > 0
+                        );
+                        
+                        if (activePlayers.length > 0) {
+                            // Show UI to pick another player
+                            gameState.duplicateSecondChance = {
+                                playerNumber: playerNumber,
+                                card: drawnCard,
+                                availablePlayers: activePlayers.map(p => ({
+                                    playerNumber: p.playerNumber,
+                                    name: p.name
+                                }))
+                            };
+                            
+                            io.to('game').emit('card-drawn', {
+                                playerNumber,
+                                playerName: player.name,
+                                card: drawnCard,
+                                isFirstCard: false
+                            });
+                            
+                            io.to('game').emit('duplicate-second-chance', {
+                                playerNumber,
+                                playerName: player.name,
+                                availablePlayers: gameState.duplicateSecondChance.availablePlayers
+                            });
+                            
+                            io.to('game').emit('game-state', gameState);
+                            return;
+                        } else {
+                            // No other players - discard automatically
+                            gameState.discardPile.push(drawnCard);
+                            
+                            io.to('game').emit('card-drawn', {
+                                playerNumber,
+                                playerName: player.name,
+                                card: drawnCard,
+                                isFirstCard: false
+                            });
+                            
+                            io.to('game').emit('second-chance-discarded', {
+                                playerNumber,
+                                playerName: player.name,
+                                reason: 'no-other-players'
+                            });
+                            
+                            // Check if round should end
+                            if (checkRoundEnd()) {
+                                endRound();
+                            } else {
+                                nextPlayer();
+                            }
+                            io.to('game').emit('game-state', gameState);
+                            return;
+                        }
                     } else {
-                        nextPlayer();
+                        // First Second Chance card - keep in hand normally
+                        io.to('game').emit('card-drawn', {
+                            playerNumber,
+                            playerName: player.name,
+                            card: drawnCard,
+                            isFirstCard: false
+                        });
+                        
+                        // Check if round should end
+                        if (checkRoundEnd()) {
+                            endRound();
+                        } else {
+                            nextPlayer();
+                        }
+                        io.to('game').emit('game-state', gameState);
+                        return;
                     }
-                    io.to('game').emit('game-state', gameState);
-                    return;
                 }
                 
                 // Check if it's a Bonus Points card
@@ -1084,6 +1209,49 @@ io.on('connection', (socket) => {
         gameState.secondChanceActive = false;
         gameState.secondChancePlayer = null;
         gameState.duplicateCard = null;
+        
+        // Continue with normal turn progression
+        if (checkRoundEnd()) {
+            endRound();
+        } else {
+            nextPlayer();
+        }
+        
+        io.to('game').emit('game-state', gameState);
+    });
+
+    // Handle giving duplicate Second Chance card to another player
+    socket.on('give-second-chance', (data) => {
+        const playerNumber = socket.playerNumber;
+        const { targetPlayerNumber } = data;
+        
+        if (!playerNumber || !gameState.duplicateSecondChance || 
+            gameState.duplicateSecondChance.playerNumber !== parseInt(playerNumber)) {
+            return;
+        }
+        
+        const player = gameState.players[playerNumber];
+        const targetPlayer = gameState.players[targetPlayerNumber];
+        
+        if (!player || !targetPlayer || targetPlayer.status !== 'playing') {
+            return;
+        }
+        
+        // Give the duplicate Second Chance card to the target player
+        const duplicateCard = gameState.duplicateSecondChance.card;
+        targetPlayer.cards.push(duplicateCard);
+        
+        // Clear duplicate Second Chance state
+        gameState.duplicateSecondChance = null;
+        
+        // Emit the transfer event
+        io.to('game').emit('second-chance-transferred', {
+            fromPlayerNumber: playerNumber,
+            fromPlayerName: player.name,
+            toPlayerNumber: targetPlayerNumber,
+            toPlayerName: targetPlayer.name,
+            card: duplicateCard
+        });
         
         // Continue with normal turn progression
         if (checkRoundEnd()) {

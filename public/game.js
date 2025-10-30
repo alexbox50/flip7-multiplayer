@@ -594,6 +594,27 @@ class Flip7Game {
                 this.animateSecondChanceSequence(data);
             }, 1500);
         });
+
+        this.socket.on('duplicate-second-chance', (data) => {
+            this.showDuplicateSecondChanceUI(data);
+        });
+
+        this.socket.on('second-chance-transferred', (data) => {
+            this.showMessage(
+                `${data.fromPlayerName} gave their duplicate Second Chance card to ${data.toPlayerName}`, 
+                'info'
+            );
+            this.hideDuplicateSecondChanceUI();
+        });
+
+        this.socket.on('second-chance-discarded', (data) => {
+            if (data.reason === 'no-other-players') {
+                this.showMessage(
+                    `${data.playerName} discarded duplicate Second Chance card (no other players available)`, 
+                    'info'
+                );
+            }
+        });
     }
 
     joinGame() {
@@ -2427,6 +2448,54 @@ class Flip7Game {
                 this.socket.emit('second-chance-complete');
             });
         });
+    }
+
+    showDuplicateSecondChanceUI(data) {
+        // Create UI elements for selecting another player to give the Second Chance card to
+        const gameArea = document.querySelector('.game-area');
+        
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'duplicate-second-chance-overlay';
+        overlay.innerHTML = `
+            <div class="duplicate-second-chance-modal">
+                <h3>Duplicate Second Chance Card</h3>
+                <p>You already have a Second Chance card in your hand. Pick another player to receive your duplicate Second Chance card:</p>
+                <select id="player-select" class="player-select">
+                    <option value="">Select a player...</option>
+                    ${data.availablePlayers.map(player => 
+                        `<option value="${player.playerNumber}">${player.name}</option>`
+                    ).join('')}
+                </select>
+                <button id="pick-player-btn" class="pick-player-btn" disabled>Pick Player</button>
+            </div>
+        `;
+        
+        gameArea.appendChild(overlay);
+        
+        // Add event listeners
+        const playerSelect = document.getElementById('player-select');
+        const pickPlayerBtn = document.getElementById('pick-player-btn');
+        
+        playerSelect.addEventListener('change', () => {
+            pickPlayerBtn.disabled = !playerSelect.value;
+        });
+        
+        pickPlayerBtn.addEventListener('click', () => {
+            const targetPlayerNumber = parseInt(playerSelect.value);
+            if (targetPlayerNumber) {
+                this.socket.emit('give-second-chance', {
+                    targetPlayerNumber: targetPlayerNumber
+                });
+            }
+        });
+    }
+
+    hideDuplicateSecondChanceUI() {
+        const overlay = document.querySelector('.duplicate-second-chance-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
     }
 
     animateFreezeCardToDiscard(playerNumber, freezeCard) {
