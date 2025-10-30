@@ -84,7 +84,12 @@ class Flip7Game {
         this.freezeApplyBtn.addEventListener('click', () => this.applyFreeze());
         
         // Second Chance target selection
-        this.secondChanceTargetSelect.addEventListener('change', () => this.updateSecondChanceGiveButton());
+        this.secondChanceTargetSelect.addEventListener('change', () => {
+            console.log('Second Chance target select change event fired');
+            console.log('New selected index:', this.secondChanceTargetSelect.selectedIndex);
+            console.log('New selected value:', this.secondChanceTargetSelect.value);
+            this.updateSecondChanceGiveButton();
+        });
         this.secondChanceGiveBtn.addEventListener('click', () => {
             console.log('Give Second Chance button clicked');
             this.giveSecondChance();
@@ -2536,6 +2541,12 @@ class Flip7Game {
     updateSecondChanceGiveButton() {
         const hasValue = !!this.secondChanceTargetSelect.value;
         console.log('updateSecondChanceGiveButton - select value:', this.secondChanceTargetSelect.value, 'hasValue:', hasValue);
+        console.log('Selected index:', this.secondChanceTargetSelect.selectedIndex);
+        console.log('Selected option:', this.secondChanceTargetSelect.options[this.secondChanceTargetSelect.selectedIndex]);
+        if (this.secondChanceTargetSelect.selectedIndex > 0) {
+            console.log('Selected option value:', this.secondChanceTargetSelect.options[this.secondChanceTargetSelect.selectedIndex].value);
+            console.log('Selected option text:', this.secondChanceTargetSelect.options[this.secondChanceTargetSelect.selectedIndex].textContent);
+        }
         this.secondChanceGiveBtn.disabled = !hasValue;
         console.log('Button disabled state:', this.secondChanceGiveBtn.disabled);
     }
@@ -2545,11 +2556,23 @@ class Flip7Game {
         console.log('Select element:', this.secondChanceTargetSelect);
         console.log('Select value:', this.secondChanceTargetSelect.value);
         console.log('Select options count:', this.secondChanceTargetSelect.options.length);
+        console.log('Selected index:', this.secondChanceTargetSelect.selectedIndex);
         
-        const targetPlayerNumber = parseInt(this.secondChanceTargetSelect.value);
-        console.log('Parsed target player number:', targetPlayerNumber);
+        // Try different ways to get the selected value
+        let targetPlayerNumber = null;
         
-        if (!targetPlayerNumber) {
+        if (this.secondChanceTargetSelect.selectedIndex > 0) {
+            const selectedOption = this.secondChanceTargetSelect.options[this.secondChanceTargetSelect.selectedIndex];
+            console.log('Selected option:', selectedOption);
+            console.log('Selected option value:', selectedOption.value);
+            targetPlayerNumber = parseInt(selectedOption.value);
+        } else {
+            targetPlayerNumber = parseInt(this.secondChanceTargetSelect.value);
+        }
+        
+        console.log('Final target player number:', targetPlayerNumber);
+        
+        if (!targetPlayerNumber || isNaN(targetPlayerNumber)) {
             console.log('No target player selected - value is empty or invalid');
             return;
         }
