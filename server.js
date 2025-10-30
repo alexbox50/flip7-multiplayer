@@ -613,6 +613,11 @@ io.on('connection', (socket) => {
                 
                 player.hasDrawnFirstCard = true;
                 
+                console.log('=== FIRST DRAW COMPLETED ===');
+                console.log(`Player ${playerNumber} drew: ${drawnCard.value} (id: ${drawnCard.id})`);
+                console.log(`Player now has ${player.cards.length} cards total`);
+                console.log('=========================');
+                
                 // Check if it's a Freeze card
                 if (drawnCard.value === 'freeze') {
                     // Keep freeze card in hand for display, but set freeze state
@@ -644,10 +649,14 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Second Chance card
                 if (drawnCard.value === 'second-chance') {
+                    console.log('=== SECOND CHANCE CARD DRAWN (FIRST DRAW) ===');
                     // Check if player now has multiple Second Chance cards (including the one just drawn)
                     const existingSecondChanceCards = player.cards.filter(c => c.value === 'second-chance');
+                    console.log(`Player ${playerNumber} now has ${existingSecondChanceCards.length} Second Chance cards`);
+                    console.log('Second Chance card IDs:', existingSecondChanceCards.map(c => c.id));
                     
                     if (existingSecondChanceCards.length >= 2) {
+                        console.log('Multiple Second Chance cards detected - initiating duplicate handling (FIRST DRAW)');
                         // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.playerNumber !== playerNumber && 
@@ -655,6 +664,8 @@ io.on('connection', (socket) => {
                             p.cards.length > 0 &&
                             !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
                         );
+                        
+                        console.log(`Found ${activePlayers.length} eligible players for Second Chance transfer`);
                         
                         if (activePlayers.length > 0) {
                             // Show UI to pick another player
@@ -666,6 +677,8 @@ io.on('connection', (socket) => {
                                     name: p.name
                                 }))
                             };
+                            
+                            console.log('Sending duplicate-second-chance event with data:', gameState.duplicateSecondChance);
                             
                             io.to('game').emit('card-drawn', {
                                 playerNumber,
@@ -704,6 +717,7 @@ io.on('connection', (socket) => {
                             return;
                         }
                     } else {
+                        console.log('First Second Chance card - keeping in hand normally (FIRST DRAW)');
                         // First Second Chance card - keep in hand normally
                         io.to('game').emit('card-drawn', {
                             playerNumber,
@@ -716,6 +730,7 @@ io.on('connection', (socket) => {
                         io.to('game').emit('game-state', gameState);
                         return;
                     }
+                    console.log('===============================================');
                 }
                 
                 // Check if it's a Bonus Points card
@@ -780,10 +795,14 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Second Chance card
                 if (drawnCard.value === 'second-chance') {
+                    console.log('=== SECOND CHANCE CARD DRAWN (SECOND DRAW) ===');
                     // Check if player now has multiple Second Chance cards (including the one just drawn)
                     const existingSecondChanceCards = player.cards.filter(c => c.value === 'second-chance');
+                    console.log(`Player ${playerNumber} now has ${existingSecondChanceCards.length} Second Chance cards`);
+                    console.log('Second Chance card IDs:', existingSecondChanceCards.map(c => c.id));
                     
                     if (existingSecondChanceCards.length >= 2) {
+                        console.log('Multiple Second Chance cards detected - initiating duplicate handling (SECOND DRAW)');
                         // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.playerNumber !== playerNumber && 
