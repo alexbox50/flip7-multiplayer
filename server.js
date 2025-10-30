@@ -1227,8 +1227,15 @@ io.on('connection', (socket) => {
         const playerNumber = socket.playerNumber;
         const { targetPlayerNumber } = data;
         
+        console.log('=== GIVE SECOND CHANCE EVENT ===');
+        console.log('Player number:', playerNumber);
+        console.log('Target player:', targetPlayerNumber);
+        console.log('Duplicate Second Chance state:', gameState.duplicateSecondChance);
+        console.log('================================');
+        
         if (!playerNumber || !gameState.duplicateSecondChance || 
             gameState.duplicateSecondChance.playerNumber !== parseInt(playerNumber)) {
+            console.log('Give Second Chance event rejected - invalid state');
             return;
         }
         

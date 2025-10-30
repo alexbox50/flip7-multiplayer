@@ -85,7 +85,10 @@ class Flip7Game {
         
         // Second Chance target selection
         this.secondChanceTargetSelect.addEventListener('change', () => this.updateSecondChanceGiveButton());
-        this.secondChanceGiveBtn.addEventListener('click', () => this.giveSecondChance());
+        this.secondChanceGiveBtn.addEventListener('click', () => {
+            console.log('Give Second Chance button clicked');
+            this.giveSecondChance();
+        });
         
         // Admin controls
         this.restartGameBtn.addEventListener('click', () => this.restartGame());
@@ -1999,6 +2002,15 @@ class Flip7Game {
         this.drawBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient;
         this.stickBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || (player && !player.hasDrawnFirstCard);
         
+        // Manage button visibility - hide buttons when special UI is active
+        if (mustSelectFreezeTarget || mustSelectSecondChanceRecipient) {
+            this.drawBtn.classList.add('hidden');
+            this.stickBtn.classList.add('hidden');
+        } else {
+            this.drawBtn.classList.remove('hidden');
+            this.stickBtn.classList.remove('hidden');
+        }
+        
         // Hide freeze target selection if it's no longer needed
         if (!this.gameState.freezeCardActive || this.gameState.freezeCardPlayer !== this.playerNumber) {
             this.hideFreezeTargetSelection();
@@ -2520,8 +2532,12 @@ class Flip7Game {
 
     giveSecondChance() {
         const targetPlayerNumber = parseInt(this.secondChanceTargetSelect.value);
-        if (!targetPlayerNumber) return;
+        if (!targetPlayerNumber) {
+            console.log('No target player selected');
+            return;
+        }
         
+        console.log('Giving Second Chance card to player:', targetPlayerNumber);
         this.socket.emit('give-second-chance', {
             targetPlayerNumber: targetPlayerNumber
         });
