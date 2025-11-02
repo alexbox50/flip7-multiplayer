@@ -758,7 +758,7 @@ function processNextSetAsideCard(flip3State, cardIndex) {
             playerNumber: targetPlayerNumber,
             playerName: gameState.players[targetPlayerNumber].name,
             availablePlayers: Object.keys(gameState.players)
-                .filter(pNum => pNum !== targetPlayerNumber.toString() && gameState.players[pNum].status === 'playing')
+                .filter(pNum => gameState.players[pNum].status === 'playing')
                 .map(pNum => ({
                     number: parseInt(pNum),
                     name: gameState.players[pNum].name
@@ -1118,7 +1118,7 @@ io.on('connection', (socket) => {
                         playerNumber,
                         playerName: player.name,
                         availablePlayers: Object.keys(gameState.players)
-                            .filter(pNum => pNum !== playerNumber.toString() && gameState.players[pNum].status === 'playing')
+                            .filter(pNum => gameState.players[pNum].status === 'playing')
                             .map(pNum => ({
                                 number: parseInt(pNum),
                                 name: gameState.players[pNum].name
@@ -1331,7 +1331,7 @@ io.on('connection', (socket) => {
                         playerNumber,
                         playerName: player.name,
                         availablePlayers: Object.keys(gameState.players)
-                            .filter(pNum => pNum !== playerNumber.toString() && gameState.players[pNum].status === 'playing')
+                            .filter(pNum => gameState.players[pNum].status === 'playing')
                             .map(pNum => ({
                                 number: parseInt(pNum),
                                 name: gameState.players[pNum].name
