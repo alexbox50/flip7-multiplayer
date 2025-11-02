@@ -695,6 +695,70 @@ class Flip7Game {
                 });
             }
         });
+
+        // Flip 3 events
+        this.socket.on('show-flip3-selection', (data) => {
+            // Only show UI for the player who drew the Flip 3 card
+            if (data.playerNumber === this.playerNumber && !this.isSpectator) {
+                this.showFlip3SelectionUI(data);
+            }
+        });
+
+        this.socket.on('hide-flip3-selection', () => {
+            this.hideFlip3SelectionUI();
+        });
+
+        this.socket.on('flip-3-assigned', (data) => {
+            this.showMessage(
+                `${data.assignedByName} assigned Flip 3 to ${data.targetPlayerName}!`,
+                'warning'
+            );
+            
+            if (!data.fromSetAside) {
+                this.showMessage(
+                    `${data.targetPlayerName} must now draw 3 cards...`,
+                    'info'
+                );
+            }
+        });
+
+        this.socket.on('flip-3-card-drawn', (data) => {
+            const cardText = this.getCardDisplayText(data.card);
+            this.showMessage(
+                `${data.playerName} flips: ${cardText} (${data.cardsRemaining} cards remaining)`,
+                'info'
+            );
+        });
+
+        this.socket.on('flip-3-card-set-aside', (data) => {
+            const cardText = this.getCardDisplayText(data.card);
+            this.showMessage(
+                `${cardText} set aside for later assignment`,
+                'info'
+            );
+        });
+
+        this.socket.on('flip-3-bust', (data) => {
+            this.showMessage(
+                `${data.playerName} is bust (${data.handValue})! Skipping ${data.skippedCards} remaining cards.`,
+                'warning'
+            );
+        });
+
+        this.socket.on('flip-3-flip-7', (data) => {
+            this.showMessage(
+                `${data.playerName} hit Flip 7 during Flip 3! Perfect score achieved!`,
+                'success'
+            );
+        });
+
+        this.socket.on('flip-3-completed', (data) => {
+            let message = `${data.playerName} completed Flip 3 sequence.`;
+            if (data.setAsideCards.length > 0) {
+                message += ` ${data.setAsideCards.length} special card(s) were set aside for assignment.`;
+            }
+            this.showMessage(message, 'info');
+        });
     }
 
     joinGame() {
@@ -2893,6 +2957,129 @@ class Flip7Game {
         }, 800);
 
         console.log(`Card animation: hand at (${startX}, ${startY}) → discard at (${targetX}, ${targetY})`);
+    }
+
+    showFlip3SelectionUI(data) {
+        console.log('showFlip3SelectionUI called with data:', data);
+        
+        // Create or find Flip 3 selection elements
+        let flip3TargetSelect = document.getElementById('flip3-target-select');
+        let flip3AssignBtn = document.getElementById('flip3-assign-btn');
+        
+        if (!flip3TargetSelect || !flip3AssignBtn) {
+            // Create the UI elements if they don't exist
+            this.createFlip3SelectionElements();
+            flip3TargetSelect = document.getElementById('flip3-target-select');
+            flip3AssignBtn = document.getElementById('flip3-assign-btn');
+        }
+        
+        // Clear existing options
+        flip3TargetSelect.innerHTML = '<option value="">Choose a player...</option>';
+        
+        // Populate with available players
+        data.availablePlayers.forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.number;
+            option.textContent = `Player ${player.number}: ${player.name}`;
+            flip3TargetSelect.appendChild(option);
+        });
+        
+        // Show the selection UI
+        flip3TargetSelect.classList.remove('hidden');
+        flip3AssignBtn.classList.remove('hidden');
+        flip3AssignBtn.disabled = true;
+        
+        // Update turn status
+        this.turnStatus.textContent = 'Assign Flip 3 card to another player';
+    }
+
+    createFlip3SelectionElements() {
+        // Create select element
+        const flip3TargetSelect = document.createElement('select');
+        flip3TargetSelect.id = 'flip3-target-select';
+        flip3TargetSelect.className = 'hidden';
+        flip3TargetSelect.addEventListener('change', () => this.updateFlip3AssignButton());
+        
+        // Create assign button
+        const flip3AssignBtn = document.createElement('button');
+        flip3AssignBtn.id = 'flip3-assign-btn';
+        flip3AssignBtn.textContent = 'Assign Flip 3';
+        flip3AssignBtn.className = 'btn hidden';
+        flip3AssignBtn.disabled = true;
+        flip3AssignBtn.addEventListener('click', () => this.assignFlip3());
+        
+        // Insert after the second chance elements
+        const secondChanceGiveBtn = document.getElementById('second-chance-give-btn');
+        if (secondChanceGiveBtn && secondChanceGiveBtn.parentNode) {
+            secondChanceGiveBtn.parentNode.insertBefore(flip3TargetSelect, secondChanceGiveBtn.nextSibling);
+            secondChanceGiveBtn.parentNode.insertBefore(flip3AssignBtn, flip3TargetSelect.nextSibling);
+        } else {
+            // Fallback: add to turn status container
+            const turnStatusContainer = this.turnStatus.parentNode;
+            turnStatusContainer.appendChild(flip3TargetSelect);
+            turnStatusContainer.appendChild(flip3AssignBtn);
+        }
+    }
+
+    hideFlip3SelectionUI() {
+        const flip3TargetSelect = document.getElementById('flip3-target-select');
+        const flip3AssignBtn = document.getElementById('flip3-assign-btn');
+        
+        if (flip3TargetSelect) {
+            flip3TargetSelect.classList.add('hidden');
+            flip3TargetSelect.value = '';
+        }
+        
+        if (flip3AssignBtn) {
+            flip3AssignBtn.classList.add('hidden');
+            flip3AssignBtn.disabled = true;
+        }
+        
+        // Reset turn status
+        this.turnStatus.textContent = 'Your Turn';
+    }
+
+    updateFlip3AssignButton() {
+        const flip3TargetSelect = document.getElementById('flip3-target-select');
+        const flip3AssignBtn = document.getElementById('flip3-assign-btn');
+        
+        if (flip3TargetSelect && flip3AssignBtn) {
+            const hasValue = !!flip3TargetSelect.value;
+            flip3AssignBtn.disabled = !hasValue;
+        }
+    }
+
+    assignFlip3() {
+        const flip3TargetSelect = document.getElementById('flip3-target-select');
+        const targetPlayerNumber = parseInt(flip3TargetSelect.value);
+        
+        if (!targetPlayerNumber || isNaN(targetPlayerNumber)) {
+            console.log('No target player selected for Flip 3');
+            return;
+        }
+        
+        console.log('Assigning Flip 3 card to player:', targetPlayerNumber);
+        this.socket.emit('flip-3-assignment', {
+            targetPlayerNumber: targetPlayerNumber
+        });
+        
+        this.hideFlip3SelectionUI();
+    }
+
+    getCardDisplayText(card) {
+        if (card.value === 'freeze') {
+            return 'Freeze';
+        } else if (card.value === 'second-chance') {
+            return 'Second Chance';
+        } else if (card.value === 'flip-3') {
+            return 'Flip 3';
+        } else if (card.value === 'bonus') {
+            return `Bonus (+${card.bonusPoints})`;
+        } else if (card.value === 'multiplier') {
+            return 'Multiplier (×2)';
+        } else {
+            return card.value.toString();
+        }
     }
 }
 

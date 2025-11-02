@@ -39,6 +39,9 @@ function parseCustomDeck(deckSpec) {
         } else if (spec === 'f') {
             // Freeze card
             card = { value: 'freeze', id: `freeze-${cardCounts[spec]}` };
+        } else if (spec === 'f3') {
+            // Flip 3 card
+            card = { value: 'flip-3', id: `flip-3-${cardCounts[spec]}` };
         } else if (spec === 'm') {
             // Multiplier card
             card = { value: 'multiplier', multiplier: 2, id: `multiplier-${cardCounts[spec]}` };
@@ -61,7 +64,7 @@ function parseCustomDeck(deckSpec) {
             cardCounts[spec]++;
         } else {
             console.error(`❌ Invalid card specification: "${cardSpec}"`);
-            console.log('Valid formats: c=second-chance, f=freeze, m=multiplier, b2/b4/b6/b8/b10=bonus, 0-12=numeric');
+            console.log('Valid formats: c=second-chance, f=freeze, f3=flip-3, m=multiplier, b2/b4/b6/b8/b10=bonus, 0-12=numeric');
         }
     });
     
@@ -105,16 +108,7 @@ const playerSlots = Array.from({length: MAX_PLAYERS}, (_, i) => ({
 
 // Flip 7 game logic
 function createDeck() {
-    // Check if custom deck is specified
-    if (customDeck) {
-        const parsedDeck = parseCustomDeck(customDeck);
-        if (parsedDeck && parsedDeck.length > 0) {
-            console.log('🎯 Using custom deck - no shuffling applied for testing predictability');
-            return parsedDeck;  // Don't shuffle custom deck for predictable testing
-        }
-    }
-    
-    // Default deck creation
+    // Always create the normal deck first
     const deck = [];
     
     // Add 1 Zero card (value 0, counts toward Flip 7 but gives no points)
@@ -137,6 +131,11 @@ function createDeck() {
         deck.push({ value: 'second-chance', id: `second-chance-${count}` });
     }
     
+    // Add 3 Flip 3 cards
+    for (let count = 0; count < 3; count++) {
+        deck.push({ value: 'flip-3', id: `flip-3-${count}` });
+    }
+    
     // Add 5 Bonus Points cards (+2, +4, +6, +8, +10)
     const bonusValues = [2, 4, 6, 8, 10];
     bonusValues.forEach((value, index) => {
@@ -146,8 +145,27 @@ function createDeck() {
     // Add 1 Multiplier card (2x multiplier)
     deck.push({ value: 'multiplier', multiplier: 2, id: 'multiplier-2' });
     
-    console.log(`Created deck with ${deck.length} cards (including 1 zero card, 1 multiplier card)`);
+    console.log(`Created normal deck with ${deck.length} cards (including 1 zero card, 1 multiplier card)`);
     
+    // Check if custom deck is specified to prepend
+    if (customDeck) {
+        const parsedCustomCards = parseCustomDeck(customDeck);
+        if (parsedCustomCards && parsedCustomCards.length > 0) {
+            console.log('🎯 Prepending custom cards to normal deck - no shuffling applied for testing predictability');
+            
+            // Since deck.pop() draws from the end, we need to add custom cards at the end
+            // in reverse order so they are drawn in the specified order
+            const reversedCustomCards = [...parsedCustomCards].reverse();
+            deck.push(...reversedCustomCards);
+            
+            console.log(`Final deck has ${deck.length} cards total`);
+            console.log(`Custom cards (in draw order): ${parsedCustomCards.map(c => c.value).join(', ')}`);
+            
+            return deck;  // Don't shuffle when using custom cards for predictable testing
+        }
+    }
+    
+    // No custom deck, shuffle the normal deck
     return shuffleDeck(deck);
 }
 
@@ -268,7 +286,7 @@ function calculateBaseScoringValue(playerNumber) {
     // Calculate base score (excluding multiplier cards)
     return player.cards.reduce((sum, card) => {
         // Skip non-scoring cards (including multiplier)
-        if (card.value === 'freeze' || card.value === 'second-chance' || card.value === 'multiplier') {
+        if (card.value === 'freeze' || card.value === 'second-chance' || card.value === 'flip-3' || card.value === 'multiplier') {
             return sum;
         }
         // Ignored duplicate cards don't contribute to hand value
@@ -302,7 +320,7 @@ function calculateHandValue(playerNumber) {
         console.log(`Processing card: ${card.value} (id: ${card.id})`);
         
         // Skip non-scoring cards (including multiplier)
-        if (card.value === 'freeze' || card.value === 'second-chance' || card.value === 'multiplier') {
+        if (card.value === 'freeze' || card.value === 'second-chance' || card.value === 'flip-3' || card.value === 'multiplier') {
             console.log(`  -> Skipped: Special card (${card.value})`);
             return sum;
         }
@@ -536,6 +554,233 @@ function endRound() {
     } else {
         gameState.roundNumber++;
     }
+}
+
+function startFlip3Drawing(flip3State) {
+    console.log(`=== STARTING FLIP 3 DRAWING ===`);
+    console.log(`Target player: ${flip3State.targetPlayerNumber}`);
+    console.log(`Cards to flip: ${flip3State.cardsToFlip}`);
+    
+    // Function to draw the next card in the sequence
+    function drawNextFlip3Card() {
+        if (flip3State.cardsToFlip === 0) {
+            // All cards drawn, process any set-aside cards
+            finishFlip3Drawing(flip3State);
+            return;
+        }
+        
+        const targetPlayerNumber = flip3State.targetPlayerNumber;
+        const targetPlayer = gameState.players[targetPlayerNumber];
+        
+        // Check for bust before drawing
+        const currentHandValue = calculateHandValue(targetPlayerNumber);
+        if (currentHandValue >= 21) {
+            console.log(`Player ${targetPlayerNumber} is bust (${currentHandValue}), skipping remaining Flip 3 cards`);
+            
+            // Announce bust and skip remaining cards
+            io.to('game').emit('flip-3-bust', {
+                playerNumber: targetPlayerNumber,
+                playerName: targetPlayer.name,
+                handValue: currentHandValue,
+                skippedCards: flip3State.cardsToFlip
+            });
+            
+            finishFlip3Drawing(flip3State);
+            return;
+        }
+        
+        // Draw the next card
+        const drawnCard = drawCard(targetPlayerNumber);
+        if (!drawnCard) {
+            console.log('No cards left in deck during Flip 3');
+            finishFlip3Drawing(flip3State);
+            return;
+        }
+        
+        flip3State.flippedCards.push(drawnCard);
+        flip3State.cardsToFlip--;
+        
+        console.log(`Flip 3: Drew ${drawnCard.value} for player ${targetPlayerNumber}, ${flip3State.cardsToFlip} cards remaining`);
+        
+        // Emit the card draw
+        io.to('game').emit('flip-3-card-drawn', {
+            playerNumber: targetPlayerNumber,
+            playerName: targetPlayer.name,
+            card: drawnCard,
+            cardsRemaining: flip3State.cardsToFlip
+        });
+        
+        // Handle special cards
+        if (drawnCard.value === 'second-chance') {
+            // Second Chance must be assigned immediately
+            console.log(`Second Chance drawn during Flip 3, must be assigned immediately`);
+            
+            // Set up assignment state
+            gameState.secondChanceAssignment = {
+                playerNumber: targetPlayerNumber,
+                card: drawnCard,
+                duringFlip3: true,
+                flip3State: flip3State
+            };
+            
+            // Show assignment UI
+            io.to('game').emit('show-second-chance-selection', {
+                playerNumber: targetPlayerNumber,
+                playerName: targetPlayer.name,
+                availablePlayers: Object.keys(gameState.players)
+                    .filter(pNum => pNum !== targetPlayerNumber.toString() && gameState.players[pNum].status === 'playing')
+                    .map(pNum => ({
+                        number: parseInt(pNum),
+                        name: gameState.players[pNum].name
+                    }))
+            });
+            
+            return; // Wait for assignment before continuing
+            
+        } else if (drawnCard.value === 'freeze' || drawnCard.value === 'flip-3') {
+            // Set aside Freeze and Flip 3 cards for later assignment
+            console.log(`${drawnCard.value} card set aside during Flip 3`);
+            
+            // Remove from player's hand and add to set-aside
+            const cardIndex = targetPlayer.cards.findIndex(card => card.id === drawnCard.id);
+            if (cardIndex !== -1) {
+                targetPlayer.cards.splice(cardIndex, 1);
+                flip3State.setAsideCards.push(drawnCard);
+            }
+            
+            io.to('game').emit('flip-3-card-set-aside', {
+                playerNumber: targetPlayerNumber,
+                playerName: targetPlayer.name,
+                card: drawnCard
+            });
+        }
+        
+        // Check for Flip 7 after this card
+        const newHandValue = calculateHandValue(targetPlayerNumber);
+        if (newHandValue === 21) {
+            console.log(`Player ${targetPlayerNumber} hit Flip 7 during Flip 3!`);
+            
+            io.to('game').emit('flip-3-flip-7', {
+                playerNumber: targetPlayerNumber,
+                playerName: targetPlayer.name,
+                handValue: newHandValue
+            });
+            
+            // Skip remaining cards
+            finishFlip3Drawing(flip3State);
+            return;
+        }
+        
+        // Continue with next card after a short delay
+        setTimeout(() => {
+            drawNextFlip3Card();
+        }, 1500);
+    }
+    
+    // Start the drawing sequence
+    drawNextFlip3Card();
+}
+
+function finishFlip3Drawing(flip3State) {
+    console.log(`=== FINISHING FLIP 3 DRAWING ===`);
+    console.log(`Set aside cards: ${flip3State.setAsideCards.length}`);
+    
+    const targetPlayerNumber = flip3State.targetPlayerNumber;
+    const targetPlayer = gameState.players[targetPlayerNumber];
+    
+    // Emit completion
+    io.to('game').emit('flip-3-completed', {
+        playerNumber: targetPlayerNumber,
+        playerName: targetPlayer.name,
+        flippedCards: flip3State.flippedCards,
+        setAsideCards: flip3State.setAsideCards
+    });
+    
+    // Handle set-aside cards
+    if (flip3State.setAsideCards.length > 0) {
+        // Process set-aside cards one at a time
+        processNextSetAsideCard(flip3State, 0);
+    } else {
+        // No set-aside cards, continue normal game flow
+        continueAfterFlip3();
+    }
+}
+
+function processNextSetAsideCard(flip3State, cardIndex) {
+    if (cardIndex >= flip3State.setAsideCards.length) {
+        // All set-aside cards processed
+        continueAfterFlip3();
+        return;
+    }
+    
+    const card = flip3State.setAsideCards[cardIndex];
+    const targetPlayerNumber = flip3State.targetPlayerNumber;
+    
+    console.log(`Processing set-aside card ${cardIndex + 1}/${flip3State.setAsideCards.length}: ${card.value}`);
+    
+    if (card.value === 'freeze') {
+        // Set up freeze assignment
+        gameState.freezeAssignment = {
+            playerNumber: targetPlayerNumber,
+            card: card
+        };
+        
+        // Show freeze target selection
+        io.to('game').emit('show-freeze-target-selection', {
+            playerNumber: targetPlayerNumber,
+            playerName: gameState.players[targetPlayerNumber].name,
+            availablePlayers: Object.keys(gameState.players)
+                .filter(pNum => pNum !== targetPlayerNumber.toString() && gameState.players[pNum].status === 'playing')
+                .map(pNum => ({
+                    number: parseInt(pNum),
+                    name: gameState.players[pNum].name
+                }))
+        });
+        
+        // Store continuation info
+        gameState.freezeAssignment.continueSetAside = {
+            flip3State: flip3State,
+            nextCardIndex: cardIndex + 1
+        };
+        
+    } else if (card.value === 'flip-3') {
+        // Set up flip-3 assignment
+        gameState.flip3Assignment = {
+            playerNumber: targetPlayerNumber,
+            card: card
+        };
+        
+        // Show flip-3 target selection
+        io.to('game').emit('show-flip3-selection', {
+            playerNumber: targetPlayerNumber,
+            playerName: gameState.players[targetPlayerNumber].name,
+            availablePlayers: Object.keys(gameState.players)
+                .filter(pNum => pNum !== targetPlayerNumber.toString() && gameState.players[pNum].status === 'playing')
+                .map(pNum => ({
+                    number: parseInt(pNum),
+                    name: gameState.players[pNum].name
+                }))
+        });
+        
+        // Store continuation info
+        gameState.flip3Assignment.continueSetAside = {
+            flip3State: flip3State,
+            nextCardIndex: cardIndex + 1
+        };
+    }
+}
+
+function continueAfterFlip3() {
+    console.log('Continuing game flow after Flip 3 completion');
+    
+    // Continue with normal turn progression
+    if (checkRoundEnd()) {
+        endRound();
+    } else {
+        nextPlayer();
+    }
+    
+    io.to('game').emit('game-state', gameState);
 }
 
 // Socket.IO connection handling
@@ -843,6 +1088,38 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Flip 3 card
+                if (drawnCard.value === 'flip-3') {
+                    // Remove the Flip 3 card from the player's hand first (it gets assigned, not kept)
+                    const cardIndex = player.cards.findIndex(c => c.id === drawnCard.id);
+                    if (cardIndex !== -1) {
+                        player.cards.splice(cardIndex, 1);
+                    }
+                    
+                    // Show UI to assign the Flip 3 card to a player
+                    gameState.flip3Assignment = {
+                        playerNumber: playerNumber,
+                        card: drawnCard,
+                        assignerName: player.name
+                    };
+                    
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: true
+                    });
+                    
+                    io.to('game').emit('flip-3-assignment', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard
+                    });
+                    
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 io.to('game').emit('card-drawn', {
                     playerNumber,
                     playerName: player.name,
@@ -1018,6 +1295,38 @@ io.on('connection', (socket) => {
                     return;
                 }
                 
+                // Check if it's a Flip 3 card
+                if (drawnCard.value === 'flip-3') {
+                    // Remove the Flip 3 card from the player's hand first (it gets assigned, not kept)
+                    const cardIndex = player.cards.findIndex(c => c.id === drawnCard.id);
+                    if (cardIndex !== -1) {
+                        player.cards.splice(cardIndex, 1);
+                    }
+                    
+                    // Show UI to assign the Flip 3 card to a player
+                    gameState.flip3Assignment = {
+                        playerNumber: playerNumber,
+                        card: drawnCard,
+                        assignerName: player.name
+                    };
+                    
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: false
+                    });
+                    
+                    io.to('game').emit('flip-3-assignment', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard
+                    });
+                    
+                    io.to('game').emit('game-state', gameState);
+                    return;
+                }
+                
                 // Check for bust (same value already in hand)
                 // Exclude freeze cards, second chance cards, bonus cards, and ignored cards from value calculations
                 // Also exclude the newly drawn card from the existing hand check
@@ -1042,6 +1351,7 @@ io.on('connection', (socket) => {
                 const existingCardValues = player.cards.filter(c => 
                     c.value !== 'freeze' && 
                     c.value !== 'second-chance' && 
+                    c.value !== 'flip-3' &&
                     c.value !== 'bonus' &&
                     !c.ignored &&
                     c.id !== drawnCard.id // Exclude the card we just drew
@@ -1305,11 +1615,22 @@ io.on('connection', (socket) => {
             io.to('game').emit('game-state', gameState);
         }, 1100);
         
-        // Check if round should end
-        if (checkRoundEnd()) {
-            endRound();
+        // Check if this was part of set-aside processing
+        if (gameState.freezeAssignment && gameState.freezeAssignment.continueSetAside) {
+            const { flip3State, nextCardIndex } = gameState.freezeAssignment.continueSetAside;
+            gameState.freezeAssignment = null;
+            
+            // Continue processing set-aside cards
+            setTimeout(() => {
+                processNextSetAsideCard(flip3State, nextCardIndex);
+            }, 1200);
         } else {
-            nextPlayer();
+            // Normal freeze handling
+            if (checkRoundEnd()) {
+                endRound();
+            } else {
+                nextPlayer();
+            }
         }
         
         io.to('game').emit('game-state', gameState);
@@ -1404,11 +1725,104 @@ io.on('connection', (socket) => {
             card: duplicateCard
         });
         
-        // Continue with normal turn progression
-        if (checkRoundEnd()) {
-            endRound();
+        // Check if this was during Flip 3 and need to continue
+        if (gameState.secondChanceAssignment && gameState.secondChanceAssignment.duringFlip3) {
+            const flip3State = gameState.secondChanceAssignment.flip3State;
+            gameState.secondChanceAssignment = null;
+            
+            console.log('Second Chance assigned during Flip 3, continuing drawing sequence');
+            
+            // Continue the Flip 3 drawing sequence after a short delay
+            setTimeout(() => {
+                // Resume drawing cards for Flip 3
+                startFlip3Drawing({
+                    ...flip3State,
+                    cardsToFlip: flip3State.cardsToFlip // Continue with remaining cards
+                });
+            }, 1500);
+            
         } else {
-            nextPlayer();
+            // Continue with normal turn progression
+            if (checkRoundEnd()) {
+                endRound();
+            } else {
+                nextPlayer();
+            }
+        }
+        
+        io.to('game').emit('game-state', gameState);
+    });
+
+    // Handle Flip 3 card assignment
+    socket.on('flip-3-assignment', (data) => {
+        if (!gameState.flip3Assignment) {
+            return;
+        }
+        
+        const { targetPlayerNumber } = data;
+        const player = gameState.players[socket.playerNumber];
+        
+        if (!player || socket.playerNumber !== gameState.flip3Assignment.playerNumber) {
+            return;
+        }
+        
+        // Validate target player
+        if (!gameState.players[targetPlayerNumber] || targetPlayerNumber === socket.playerNumber) {
+            socket.emit('error', { message: 'Invalid target player' });
+            return;
+        }
+        
+        console.log(`Flip 3 assigned to player ${targetPlayerNumber} by player ${socket.playerNumber}`);
+        
+        // Check if this was part of set-aside processing
+        if (gameState.flip3Assignment && gameState.flip3Assignment.continueSetAside) {
+            const { flip3State, nextCardIndex } = gameState.flip3Assignment.continueSetAside;
+            
+            // Clear the assignment state
+            gameState.flip3Assignment = null;
+            
+            // Hide selection UI from all players
+            io.to('game').emit('hide-flip3-selection');
+            
+            // Emit assignment notification
+            io.to('game').emit('flip-3-assigned', {
+                assignedBy: socket.playerNumber,
+                assignedByName: player.name,
+                targetPlayer: targetPlayerNumber,
+                targetPlayerName: gameState.players[targetPlayerNumber].name,
+                fromSetAside: true
+            });
+            
+            // Continue processing set-aside cards
+            setTimeout(() => {
+                processNextSetAsideCard(flip3State, nextCardIndex);
+            }, 1500);
+            
+        } else {
+            // Normal Flip 3 assignment - start new drawing sequence
+            const flip3State = {
+                targetPlayerNumber: parseInt(targetPlayerNumber),
+                cardsToFlip: 3,
+                flippedCards: [],
+                setAsideCards: []
+            };
+            
+            // Clear the assignment state
+            gameState.flip3Assignment = null;
+            
+            // Hide selection UI from all players
+            io.to('game').emit('hide-flip3-selection');
+            
+            // Emit assignment notification
+            io.to('game').emit('flip-3-assigned', {
+                assignedBy: socket.playerNumber,
+                assignedByName: player.name,
+                targetPlayer: targetPlayerNumber,
+                targetPlayerName: gameState.players[targetPlayerNumber].name
+            });
+            
+            // Start the three-card drawing procedure
+            startFlip3Drawing(flip3State);
         }
         
         io.to('game').emit('game-state', gameState);
@@ -1614,7 +2028,7 @@ server.listen(PORT, HOST, () => {
     if (customDeck) {
         console.log('🎯 Custom deck enabled for testing');
         console.log('   Example: --deck "1,c,2,c" creates a 4-card deck (1, second-chance, 2, second-chance)');
-        console.log('   Card types: c=second-chance, f=freeze, m=multiplier, b2/b4/b6/b8/b10=bonus, 0-12=numeric');
+        console.log('   Card types: c=second-chance, f=freeze, f3=flip-3, m=multiplier, b2/b4/b6/b8/b10=bonus, 0-12=numeric');
     } else {
         console.log('💡 Tip: Use --deck "card1,card2,..." for predictable testing (e.g., --deck "1,c,2,c")');
     }
