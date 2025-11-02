@@ -4,6 +4,71 @@ const socketIo = require('socket.io');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+let customDeck = null;
+
+for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--deck' && i + 1 < args.length) {
+        customDeck = args[i + 1];
+        console.log('🎯 Using custom deck:', customDeck);
+        break;
+    }
+}
+
+// Parse custom deck specification
+function parseCustomDeck(deckSpec) {
+    if (!deckSpec) return null;
+    
+    const cards = deckSpec.split(',');
+    const deck = [];
+    const cardCounts = {};  // Track counts for unique IDs
+    
+    cards.forEach((cardSpec) => {
+        const spec = cardSpec.trim().toLowerCase();
+        let card = null;
+        
+        // Initialize counter for this card type
+        if (!cardCounts[spec]) {
+            cardCounts[spec] = 0;
+        }
+        
+        if (spec === 'c') {
+            // Second Chance card
+            card = { value: 'second-chance', id: `second-chance-${cardCounts[spec]}` };
+        } else if (spec === 'f') {
+            // Freeze card
+            card = { value: 'freeze', id: `freeze-${cardCounts[spec]}` };
+        } else if (spec === 'm') {
+            // Multiplier card
+            card = { value: 'multiplier', multiplier: 2, id: `multiplier-${cardCounts[spec]}` };
+        } else if (spec.startsWith('b')) {
+            // Bonus card (e.g., b2, b4, b6, b8, b10)
+            const bonusValue = parseInt(spec.substring(1));
+            if (bonusValue && [2, 4, 6, 8, 10].includes(bonusValue)) {
+                card = { value: 'bonus', bonusPoints: bonusValue, id: `bonus-${bonusValue}-${cardCounts[spec]}` };
+            }
+        } else {
+            // Numeric card (including 0)
+            const value = parseInt(spec);
+            if (!isNaN(value) && value >= 0 && value <= 12) {
+                card = { value: value, id: `${value}-${cardCounts[spec]}` };
+            }
+        }
+        
+        if (card) {
+            deck.push(card);
+            cardCounts[spec]++;
+        } else {
+            console.error(`❌ Invalid card specification: "${cardSpec}"`);
+            console.log('Valid formats: c=second-chance, f=freeze, m=multiplier, b2/b4/b6/b8/b10=bonus, 0-12=numeric');
+        }
+    });
+    
+    console.log(`🎯 Created custom deck with ${deck.length} cards:`, deck.map(c => c.value).join(', '));
+    return deck;
+}
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -40,6 +105,16 @@ const playerSlots = Array.from({length: MAX_PLAYERS}, (_, i) => ({
 
 // Flip 7 game logic
 function createDeck() {
+    // Check if custom deck is specified
+    if (customDeck) {
+        const parsedDeck = parseCustomDeck(customDeck);
+        if (parsedDeck && parsedDeck.length > 0) {
+            console.log('🎯 Using custom deck - no shuffling applied for testing predictability');
+            return parsedDeck;  // Don't shuffle custom deck for predictable testing
+        }
+    }
+    
+    // Default deck creation
     const deck = [];
     
     // Add 1 Zero card (value 0, counts toward Flip 7 but gives no points)
@@ -1536,4 +1611,11 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => {
     console.log(`Flip 7 server running on ${HOST}:${PORT}`);
+    if (customDeck) {
+        console.log('🎯 Custom deck enabled for testing');
+        console.log('   Example: --deck "1,c,2,c" creates a 4-card deck (1, second-chance, 2, second-chance)');
+        console.log('   Card types: c=second-chance, f=freeze, m=multiplier, b2/b4/b6/b8/b10=bonus, 0-12=numeric');
+    } else {
+        console.log('💡 Tip: Use --deck "card1,card2,..." for predictable testing (e.g., --deck "1,c,2,c")');
+    }
 });

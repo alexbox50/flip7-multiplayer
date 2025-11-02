@@ -175,6 +175,21 @@ class Flip7Game {
                 }
             });
             
+            // Clear awaitingSecondChance flag if it's set but we're no longer in auto-discard scenario
+            // This handles cases where auto-discard completed and server has moved on
+            if (this.awaitingSecondChance) {
+                // Check if we have multiple Second Chance cards (still in auto-discard scenario)
+                const myCards = gameState.players[this.playerNumber]?.cards || [];
+                const secondChanceCards = myCards.filter(card => card.value === 'second-chance');
+                
+                // If we don't have multiple Second Chance cards anymore, auto-discard is done
+                if (secondChanceCards.length <= 1) {
+                    console.log('🔓 Auto-discard completed, clearing awaitingSecondChance flag');
+                    this.awaitingSecondChance = false;
+                    console.log('🔓 awaitingSecondChance flag is now:', this.awaitingSecondChance);
+                }
+            }
+            
             this.gameState = gameState;
             // If we're animating, only update hands but preserve current player highlighting
             if (this.animatingCard) {
@@ -265,6 +280,40 @@ class Flip7Game {
             // Different messages for current player vs others
             if (data.playerNumber === this.playerNumber) {
                 this.showMessage(`You drew: ${data.card.value}`, 'info');
+                
+                // Check if this creates a duplicate situation that will trigger auto-handling
+                if (data.isDuplicate) {
+                    console.log('🔒 Duplicate card detected for current player - setting awaitingSecondChance flag immediately');
+                    this.awaitingSecondChance = true;
+                    console.log('🔒 awaitingSecondChance flag is now:', this.awaitingSecondChance);
+                }
+                // Also check for duplicate Second Chance cards (auto-discard scenario)
+                else if (data.card.value === 'second-chance' && this.gameState && this.gameState.players[this.playerNumber]) {
+                    const currentPlayer = this.gameState.players[this.playerNumber];
+                    const existingSecondChanceCards = currentPlayer.cards.filter(c => c.value === 'second-chance');
+                    if (existingSecondChanceCards.length >= 1) { // Will become 2+ after this card is added
+                        console.log('🔒 Duplicate Second Chance card detected - setting awaitingSecondChance flag immediately');
+                        this.awaitingSecondChance = true;
+                        console.log('🔒 awaitingSecondChance flag is now:', this.awaitingSecondChance);
+                    }
+                }
+                // 🧪 TEMPORARY TEST MODE: Force duplicate Second Chance scenario for Player 1
+                else if (window.location.search.includes('forceTest=true') && this.playerNumber === 1 && this.gameState && this.gameState.players[this.playerNumber]) {
+                    const currentPlayer = this.gameState.players[this.playerNumber];
+                    const existingSecondChanceCards = currentPlayer.cards.filter(c => c.value === 'second-chance');
+                    if (existingSecondChanceCards.length >= 1) {
+                        console.log('🧪 TEST MODE: Simulating duplicate Second Chance detection for Player 1');
+                        console.log('🔒 FORCED Duplicate Second Chance card detected - setting awaitingSecondChance flag immediately');
+                        this.awaitingSecondChance = true;
+                        console.log('🔒 awaitingSecondChance flag is now:', this.awaitingSecondChance);
+                        
+                        // Simulate the auto-discard sequence that would normally happen on the server
+                        setTimeout(() => {
+                            console.log('🧪 TEST MODE: Simulating auto-discard sequence...');
+                            this.handleSecondChanceAutoDiscard(data);
+                        }, 1500);
+                    }
+                }
             } else {
                 this.showMessage(`${data.playerName} drew a card${data.isFirstCard ? ' (first card)' : ''}`, 'info');
             }
@@ -634,6 +683,10 @@ class Flip7Game {
             if (data.reason === 'no-eligible-players') {
                 // Animate the duplicate Second Chance card to discard pile
                 this.animateCardToDiscard(data.card, data.playerNumber, () => {
+                    // Do NOT clear the awaitingSecondChance flag here!
+                    // The flag will be cleared when the server sends the turn change via game-state update
+                    console.log('🎬 Auto-discard animation completed, waiting for server turn change');
+                    
                     // Show message after animation completes
                     this.showMessage(
                         `${data.playerName} discarded duplicate Second Chance card (no eligible players without Second Chance cards)`, 
@@ -1976,6 +2029,19 @@ class Flip7Game {
         const isMyTurn = this.gameState.currentPlayer === this.playerNumber;
         const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress && !this.animatingCard && !this.awaitingSecondChance;
         
+        // Debug logging for button state issues with call stack trace
+        const caller = new Error().stack.split('\n')[2].trim();
+        console.log(`🔍 updateActionButtons called from: ${caller}`);
+        console.log(`🔍 updateActionButtons: isMyTurn=${isMyTurn}, awaitingSecondChance=${this.awaitingSecondChance}, animatingCard=${!!this.animatingCard}, canAct=${canAct}`);
+        console.log(`🔍 Button states before update: Twist disabled=${this.drawBtn.disabled}, Stick disabled=${this.stickBtn.disabled}`);
+        
+        if (this.awaitingSecondChance) {
+            console.log('🚫 CRITICAL: awaitingSecondChance flag active - buttons MUST be disabled');
+        }
+        if (isMyTurn && this.awaitingSecondChance) {
+            console.log('🚫 Buttons disabled due to awaitingSecondChance flag during auto-discard sequence');
+        }
+        
         // Check if this player drew a freeze card and must select a target
         const mustSelectFreezeTarget = this.gameState.freezeCardActive && 
                                       this.gameState.freezeCardPlayer === this.playerNumber;
@@ -2008,16 +2074,49 @@ class Flip7Game {
         }
         
         // Set enabled/disabled state - disable buttons if must select freeze target, must select second chance recipient, or if spectator
-        this.drawBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient;
-        this.stickBtn.disabled = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || (player && !player.hasDrawnFirstCard);
+        // CRITICAL: Ensure buttons are ALWAYS disabled during awaitingSecondChance
+        const shouldDisableDraw = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || this.awaitingSecondChance;
+        const shouldDisableStick = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || (player && !player.hasDrawnFirstCard) || this.awaitingSecondChance;
+        
+        this.drawBtn.disabled = shouldDisableDraw;
+        this.stickBtn.disabled = shouldDisableStick;
+        
+        console.log(`🔍 shouldDisableDraw=${shouldDisableDraw}, shouldDisableStick=${shouldDisableStick}`);
+        console.log(`🔍 Button states after update: Twist disabled=${this.drawBtn.disabled}, Stick disabled=${this.stickBtn.disabled}`);
         
         // Manage button visibility - hide buttons when special UI is active
-        if (mustSelectFreezeTarget || mustSelectSecondChanceRecipient) {
+        // Also check if duplicate Second Chance UI is currently visible as a fallback
+        const duplicateSecondChanceUIVisible = !this.secondChanceTargetSelect.classList.contains('hidden');
+        
+        // Debug logging for button visibility logic
+        console.log('🔍 Button visibility check:', {
+            mustSelectFreezeTarget,
+            mustSelectSecondChanceRecipient, 
+            duplicateSecondChanceUIVisible,
+            gameStateDuplicateSecondChance: !!this.gameState?.duplicateSecondChance
+        });
+        
+        if (duplicateSecondChanceUIVisible) {
+            console.log('🎯 Duplicate Second Chance UI is visible - hiding buttons via fallback logic');
+        }
+        
+        if (mustSelectFreezeTarget || mustSelectSecondChanceRecipient || duplicateSecondChanceUIVisible) {
             this.drawBtn.classList.add('hidden');
             this.stickBtn.classList.add('hidden');
+            console.log('🚫 Buttons hidden due to special UI active (freeze:', mustSelectFreezeTarget, 'secondChance:', mustSelectSecondChanceRecipient, 'UIVisible:', duplicateSecondChanceUIVisible, ')');
         } else {
-            this.drawBtn.classList.remove('hidden');
-            this.stickBtn.classList.remove('hidden');
+            // CRITICAL FIX: Only show buttons if not in any special UI state AND not awaiting second chance
+            // Don't show buttons if we're still in any kind of second chance flow
+            if (!this.awaitingSecondChance && !duplicateSecondChanceUIVisible) {
+                this.drawBtn.classList.remove('hidden');
+                this.stickBtn.classList.remove('hidden');
+                console.log('👁️ Buttons made visible - no special UI active and not awaiting second chance');
+            } else {
+                // ENSURE buttons stay hidden during any second chance flow
+                this.drawBtn.classList.add('hidden');
+                this.stickBtn.classList.add('hidden');
+                console.log('🚫 Buttons kept hidden - awaitingSecondChance or special UI still active');
+            }
         }
         
         // Hide freeze target selection if it's no longer needed
@@ -2449,9 +2548,20 @@ class Flip7Game {
         this.freezeTargetSelect.value = '';
         this.freezeApplyBtn.disabled = true;
         
-        // Show the normal action buttons again
-        this.drawBtn.classList.remove('hidden');
-        this.stickBtn.classList.remove('hidden');
+        // CRITICAL FIX: Only show buttons if we're not in any other special UI state
+        // Check if duplicate Second Chance UI is active before showing buttons
+        const duplicateSecondChanceUIVisible = !this.secondChanceTargetSelect.classList.contains('hidden');
+        const mustSelectSecondChanceRecipient = this.gameState.duplicateSecondChance && 
+                                               this.gameState.duplicateSecondChance.playerNumber === this.playerNumber;
+        
+        if (!duplicateSecondChanceUIVisible && !mustSelectSecondChanceRecipient && !this.awaitingSecondChance) {
+            // Only show buttons if no other special UI is active
+            this.drawBtn.classList.remove('hidden');
+            this.stickBtn.classList.remove('hidden');
+            console.log('🔧 hideFreezeTargetSelection: Buttons shown - no special UI active');
+        } else {
+            console.log('🔧 hideFreezeTargetSelection: Buttons kept hidden - other special UI active (duplicateUI:', duplicateSecondChanceUIVisible, 'mustSelect:', mustSelectSecondChanceRecipient, 'awaiting:', this.awaitingSecondChance, ')');
+        }
     }
 
     updateFreezeApplyButton() {
@@ -2534,12 +2644,15 @@ class Flip7Game {
         this.secondChanceTargetSelect.value = '';
         this.secondChanceGiveBtn.disabled = true;
         
-        // Show the normal action buttons again
-        this.drawBtn.classList.remove('hidden');
-        this.stickBtn.classList.remove('hidden');
+        // CRITICAL FIX: Don't unconditionally show buttons here
+        // Let updateActionButtons() handle button visibility based on current state
+        console.log('🔧 hideDuplicateSecondChanceUI: UI elements hidden, avoiding recursion');
         
         // Reset turn status
         this.turnStatus.textContent = 'Your Turn';
+        
+        // NOTE: Don't call updateActionButtons() here to avoid recursion
+        // The caller should handle updating button state after hiding the UI
     }
 
     updateSecondChanceGiveButton() {
@@ -2617,57 +2730,113 @@ class Flip7Game {
     }
 
     animateCardToDiscard(card, playerNumber, onComplete) {
-        // Find the specific player's hand cell (same method as animateCardToHand)
-        let handCell = null;
-        const allRows = document.querySelectorAll('#players-table tr.player-row');
-        
-        for (const row of allRows) {
-            const playerNumElement = row.querySelector('.player-number');
-            if (playerNumElement && playerNumElement.textContent.trim() === playerNumber.toString()) {
-                handCell = row.querySelector('.hand-cell');
-                break;
-            }
-        }
-
-        if (!handCell || !this.discardStack) {
+        if (!this.discardStack) {
+            console.log('Discard stack element not found');
             onComplete();
             return;
         }
 
-        // Get exact positions (same method as animateCardToHand)
-        const handRect = handCell.getBoundingClientRect();
+        // Find the target player's hand display to get the exact starting position
+        let targetHandDisplay = null;
+        const allRows = document.querySelectorAll('#players-table tr.player-row');
+        for (const row of allRows) {
+            const playerNumElement = row.querySelector('.player-number');
+            if (playerNumElement && playerNumElement.textContent.trim() === playerNumber.toString()) {
+                targetHandDisplay = row.querySelector('.player-hand-display');
+                break;
+            }
+        }
+
+        if (!targetHandDisplay) {
+            console.log(`No hand display found for player ${playerNumber}`);
+            onComplete();
+            return;
+        }
+
+        // Find the specific card in the hand to animate from its exact position
+        let sourceCard = null;
+        const handCards = targetHandDisplay.querySelectorAll('.mini-card');
+        
+        // For duplicate Second Chance cards, we want to animate the LAST (most recently drawn) one
+        if (card.value === 'second-chance') {
+            // Find ALL Second Chance cards and take the last one
+            const secondChanceCards = [];
+            for (const handCard of handCards) {
+                const cardElement = handCard.querySelector('[style*="red"]') || handCard.querySelector('[title*="Second Chance"]');
+                if (cardElement || handCard.textContent.includes('✚')) {
+                    secondChanceCards.push(handCard);
+                }
+            }
+            
+            // Use the last Second Chance card found (most recently drawn)
+            if (secondChanceCards.length > 0) {
+                sourceCard = secondChanceCards[secondChanceCards.length - 1];
+                console.log(`Found ${secondChanceCards.length} Second Chance cards, animating the last one (most recent)`);
+            }
+        } else {
+            // For other cards, find ALL matching cards and take the last one (most recently drawn)
+            const matchingCards = [];
+            for (const handCard of handCards) {
+                if (handCard.textContent.includes(card.value)) {
+                    matchingCards.push(handCard);
+                }
+            }
+            
+            // Use the last matching card found (most recently drawn)
+            if (matchingCards.length > 0) {
+                sourceCard = matchingCards[matchingCards.length - 1];
+                console.log(`Found ${matchingCards.length} cards with value "${card.value}", animating the last one (most recent)`);
+            }
+        }
+
+        // If we can't find the specific card, use the last card in the hand
+        if (!sourceCard && handCards.length > 0) {
+            sourceCard = handCards[handCards.length - 1];
+            console.log('No specific card found, using last card in hand as fallback');
+        }
+
+        if (!sourceCard) {
+            console.log(`No source card found for animation`);
+            onComplete();
+            return;
+        }
+
+        // Get exact positions using the precise technique from animateCardToHandWithFlip
+        const sourceRect = sourceCard.getBoundingClientRect();
         const discardRect = this.discardStack.getBoundingClientRect();
         
-        // Calculate exact trajectory (same as animateCardToHand)
-        const deltaX = (discardRect.left + discardRect.width/2) - (handRect.left + handRect.width/2);
-        const deltaY = (discardRect.top + discardRect.height/2) - (handRect.top + handRect.height/2);
-
-        // Create flying card with same structure as animateCardToHand
-        const flyingCard = document.createElement('div');
-        flyingCard.className = 'card-flying-to-discard';
+        // Calculate starting position (center of the source card)
+        const startX = sourceRect.left + sourceRect.width / 2;
+        const startY = sourceRect.top + sourceRect.height / 2;
         
-        // Set exact starting position and CSS variables (same as animateCardToHand)
+        // Calculate target position (center of discard pile)
+        const targetX = discardRect.left + discardRect.width / 2;
+        const targetY = discardRect.top + discardRect.height / 2;
+
+        // Create flying card using the same technique as animateCardToHandWithFlip
+        const flyingCard = document.createElement('div');
+        flyingCard.classList.add('card-flying-to-discard');
+        
+        // Set initial position and styling to match mini-card dimensions (same as in animateCardToHandWithFlip)
         flyingCard.style.cssText = `
             position: fixed;
-            left: ${handRect.left + handRect.width/2 - 40}px;
-            top: ${handRect.top + handRect.height/2 - 56}px;
-            width: 80px;
-            height: 112px;
+            left: ${startX - 15}px;
+            top: ${startY - 21}px;
+            width: 30px;
+            height: 42px;
             z-index: 2000;
-            border: 2px solid #333;
-            border-radius: 8px;
+            border: 1px solid #333;
+            border-radius: 3px;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 0.15rem;
             font-weight: bold;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            --target-x: ${deltaX}px;
-            --target-y: ${deltaY}px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transition: all 0.8s ease-in-out;
         `;
 
-        // Set card styling based on type (same color logic as other functions)
+        // Set card styling based on type (same logic as animateCardToHandWithFlip)
         const colorClass = this.getCardColorClass(card.value);
         const suitSymbol = this.getCardSuit(card.value);
         let displayValue = card.value;
@@ -2684,36 +2853,46 @@ class Flip7Game {
             cardBackground = 'red';
         } else if (colorClass === 'red-card') {
             cardColor = '#e74c3c';
-        } else if (card.value.toString().startsWith('bonus')) {
-            cardColor = '#007bff';
-            cardBackground = 'linear-gradient(145deg, #e6f3ff 0%, #cce7ff 100%)';
-            displayValue = `+${card.bonus}`;
+        } else if (colorClass === 'freeze-card') {
+            cardColor = 'white';
+            cardBackground = 'deepskyblue';
+        } else if (colorClass === 'second-chance-card') {
+            cardColor = 'white';
+            cardBackground = 'red';
+        } else if (colorClass === 'bonus-card') {
+            cardColor = '#007BFF';
+            cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
+        } else if (colorClass === 'multiplier-card') {
+            cardColor = '#007BFF';
+            cardBackground = 'linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%)';
         }
 
         flyingCard.style.background = cardBackground;
         flyingCard.style.color = cardColor;
         
-        // For Freeze and Second Chance cards, show only one emoji to match the main card rendering
-        if (card.value === 'freeze' || card.value === 'second-chance') {
-            flyingCard.innerHTML = `
-                <div style="font-size: 1.2rem; line-height: 1;">${displayValue}</div>
-            `;
-        } else {
-            flyingCard.innerHTML = `
-                <div style="font-size: 1rem; line-height: 1;">${displayValue}</div>
-                <div style="font-size: 0.8rem; line-height: 1;">${suitSymbol}</div>
-            `;
-        }
+        // Use same HTML structure as animateCardToHandWithFlip
+        flyingCard.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="font-size: 0.15rem; line-height: 1; font-weight: bold;">${displayValue}</div>
+                <div style="font-size: 0.1rem; line-height: 1;">${suitSymbol}</div>
+            </div>
+        `;
 
         document.body.appendChild(flyingCard);
 
-        // Remove the card after animation completes
+        // Animate to target position using the same technique as animateCardToHandWithFlip
         setTimeout(() => {
-            if (flyingCard.parentNode) {
-                flyingCard.remove();
-            }
+            flyingCard.style.left = `${targetX - 15}px`;
+            flyingCard.style.top = `${targetY - 21}px`;
+        }, 50);
+
+        // Remove the card after animation completes (same timing as animateCardToHandWithFlip)
+        setTimeout(() => {
+            flyingCard.remove();
             onComplete();
-        }, 1250); // cardToDiscard animation is 1.2s, plus buffer
+        }, 800);
+
+        console.log(`Card animation: hand at (${startX}, ${startY}) → discard at (${targetX}, ${targetY})`);
     }
 }
 
