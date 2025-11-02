@@ -147,26 +147,29 @@ function createDeck() {
     
     console.log(`Created normal deck with ${deck.length} cards (including 1 zero card, 1 multiplier card)`);
     
+    // Always shuffle the normal deck first
+    const shuffledDeck = shuffleDeck(deck);
+    
     // Check if custom deck is specified to prepend
     if (customDeck) {
         const parsedCustomCards = parseCustomDeck(customDeck);
         if (parsedCustomCards && parsedCustomCards.length > 0) {
-            console.log('🎯 Prepending custom cards to normal deck - no shuffling applied for testing predictability');
+            console.log('🎯 Prepending custom cards to shuffled normal deck');
             
             // Since deck.pop() draws from the end, we need to add custom cards at the end
             // in reverse order so they are drawn in the specified order
             const reversedCustomCards = [...parsedCustomCards].reverse();
-            deck.push(...reversedCustomCards);
+            shuffledDeck.push(...reversedCustomCards);
             
-            console.log(`Final deck has ${deck.length} cards total`);
+            console.log(`Final deck has ${shuffledDeck.length} cards total`);
             console.log(`Custom cards (in draw order): ${parsedCustomCards.map(c => c.value).join(', ')}`);
             
-            return deck;  // Don't shuffle when using custom cards for predictable testing
+            return shuffledDeck;
         }
     }
     
-    // No custom deck, shuffle the normal deck
-    return shuffleDeck(deck);
+    // No custom deck, return the shuffled normal deck
+    return shuffledDeck;
 }
 
 function shuffleDeck(deck) {
