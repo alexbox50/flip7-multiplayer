@@ -714,9 +714,39 @@ class Flip7Game {
                 'warning'
             );
             
+            // Handle card animation if assigned to a different player
+            if (data.card && !data.isSelfAssignment) {
+                console.log(`Animating Flip 3 card from player ${data.assignedBy} to player ${data.targetPlayer}`);
+                
+                // Trigger card animation from assigner to target
+                setTimeout(() => {
+                    this.animateCardBetweenPlayers(data.assignedBy, data.targetPlayer, data.card, () => {
+                        // Animation complete, update displays
+                        this.updateGameDisplay();
+                    });
+                }, 500); // Small delay after assignment message
+            } else {
+                // Self-assignment or no animation needed, just update display
+                this.updateGameDisplay();
+            }
+            
             if (!data.fromSetAside) {
                 this.showMessage(
-                    `${data.targetPlayerName} must now draw 3 cards...`,
+                    `${data.targetPlayerName} must now twist 3 times manually...`,
+                    'info'
+                );
+            }
+        });
+
+        this.socket.on('flip-3-twist-required', (data) => {
+            if (data.playerNumber === this.playerNumber) {
+                this.showMessage(
+                    `You must twist ${data.twistsRemaining} more time${data.twistsRemaining === 1 ? '' : 's'}!`,
+                    'warning'
+                );
+            } else {
+                this.showMessage(
+                    `${data.playerName} must twist ${data.twistsRemaining} more time${data.twistsRemaining === 1 ? '' : 's'}`,
                     'info'
                 );
             }
@@ -724,8 +754,9 @@ class Flip7Game {
 
         this.socket.on('flip-3-card-drawn', (data) => {
             const cardText = this.getCardDisplayText(data.card);
+            const progress = data.progress || `${data.cardNumber}/${data.totalCards}`;
             this.showMessage(
-                `${data.playerName} flips: ${cardText} (${data.cardsRemaining} cards remaining)`,
+                `${data.playerName} flips card ${progress}: ${cardText}`,
                 'info'
             );
         });
@@ -954,15 +985,16 @@ class Flip7Game {
             }
         }
         
-        // Filter out freeze cards, second chance cards, bonus cards, multiplier cards, and ignored cards for duplicate checking
+        // Filter out freeze cards, second chance cards, bonus cards, multiplier cards, flip-3 cards, and ignored cards for duplicate checking
         console.log(`CLIENT: Filtering cards for player ${playerNumber}:`);
         filteredCards.forEach(card => {
             const isFreeze = card.value === 'freeze';
             const isSecondChance = card.value === 'second-chance';
             const isBonus = card.value === 'bonus';
             const isMultiplier = card.value === 'multiplier';
+            const isFlip3 = card.value === 'flip-3';
             const isIgnored = card.ignored;
-            const willExclude = isFreeze || isSecondChance || isBonus || isMultiplier || isIgnored;
+            const willExclude = isFreeze || isSecondChance || isBonus || isMultiplier || isFlip3 || isIgnored;
             
             console.log(`  Card ${card.value} (id: ${card.id}): ${willExclude ? 'EXCLUDED' : 'INCLUDED'}`);
             if (isIgnored) {
@@ -976,6 +1008,7 @@ class Flip7Game {
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
             card.value !== 'multiplier' &&
+            card.value !== 'flip-3' &&
             !card.ignored
         );
         const uniqueValues = new Set(numericCards.map(card => card.value));
@@ -994,7 +1027,7 @@ class Flip7Game {
         // Calculate base scoring value (excluding multiplier cards)
         let baseValue = 0;
         filteredCards.forEach(card => {
-            if (card.value !== 'freeze' && card.value !== 'second-chance' && card.value !== 'multiplier' && !card.ignored) {
+            if (card.value !== 'freeze' && card.value !== 'second-chance' && card.value !== 'multiplier' && card.value !== 'flip-3' && !card.ignored) {
                 if (card.value === 'bonus') {
                     baseValue += card.bonusPoints;
                 } else {
@@ -1043,6 +1076,7 @@ class Flip7Game {
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
             card.value !== 'multiplier' &&
+            card.value !== 'flip-3' &&
             !card.ignored
         );
         
@@ -2114,9 +2148,20 @@ class Flip7Game {
         const mustSelectSecondChanceRecipient = this.gameState.duplicateSecondChance && 
                                                this.gameState.duplicateSecondChance.playerNumber === this.playerNumber;
         
-        // Always keep consistent button text
-        this.drawBtn.textContent = 'Twist';
-        this.stickBtn.textContent = 'Stick';
+        // Check if this player is in Flip 3 compelled twist mode
+        const inFlip3CompelledTwist = this.gameState.flip3CompelledTwist && 
+                                     this.gameState.flip3CompelledTwist.targetPlayerNumber === this.playerNumber;
+        
+        // Set button text based on state
+        if (inFlip3CompelledTwist) {
+            const remaining = this.gameState.flip3CompelledTwist.twistsRemaining;
+            const current = 4 - remaining;
+            this.drawBtn.textContent = `Twist ${current}/3`;
+            this.stickBtn.textContent = 'Stick (Disabled)';
+        } else {
+            this.drawBtn.textContent = 'Twist';
+            this.stickBtn.textContent = 'Stick';
+        }
         
         // Update turn status text based on game state (hide for spectators)
         if (this.turnStatus) {
@@ -2128,6 +2173,9 @@ class Flip7Game {
                 this.turnStatus.textContent = "Choose a player to stick with your Freeze card!";
             } else if (mustSelectSecondChanceRecipient) {
                 this.turnStatus.textContent = "Give duplicate Second Chance card to another player";
+            } else if (inFlip3CompelledTwist) {
+                const remaining = this.gameState.flip3CompelledTwist.twistsRemaining;
+                this.turnStatus.textContent = `Must twist ${remaining} more time${remaining === 1 ? '' : 's'}!`;
             } else if (canAct) {
                 // Only show "It's your turn!" when buttons are actually enabled
                 this.turnStatus.textContent = "It's your turn!";
@@ -2139,8 +2187,9 @@ class Flip7Game {
         
         // Set enabled/disabled state - disable buttons if must select freeze target, must select second chance recipient, or if spectator
         // CRITICAL: Ensure buttons are ALWAYS disabled during awaitingSecondChance
+        // Special handling for Flip 3 compelled twist: stick is always disabled, draw follows normal rules
         const shouldDisableDraw = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || this.awaitingSecondChance;
-        const shouldDisableStick = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || (player && !player.hasDrawnFirstCard) || this.awaitingSecondChance;
+        const shouldDisableStick = this.isSpectator || !canAct || mustSelectFreezeTarget || mustSelectSecondChanceRecipient || (player && !player.hasDrawnFirstCard) || this.awaitingSecondChance || inFlip3CompelledTwist;
         
         this.drawBtn.disabled = shouldDisableDraw;
         this.stickBtn.disabled = shouldDisableStick;
@@ -2152,11 +2201,16 @@ class Flip7Game {
         // Also check if duplicate Second Chance UI is currently visible as a fallback
         const duplicateSecondChanceUIVisible = !this.secondChanceTargetSelect.classList.contains('hidden');
         
+        // Check if Flip 3 assignment UI is currently visible
+        const flip3TargetSelect = document.getElementById('flip3-target-select');
+        const flip3AssignmentUIVisible = flip3TargetSelect && !flip3TargetSelect.classList.contains('hidden');
+        
         // Debug logging for button visibility logic
         console.log('🔍 Button visibility check:', {
             mustSelectFreezeTarget,
             mustSelectSecondChanceRecipient, 
             duplicateSecondChanceUIVisible,
+            flip3AssignmentUIVisible,
             gameStateDuplicateSecondChance: !!this.gameState?.duplicateSecondChance
         });
         
@@ -2164,19 +2218,23 @@ class Flip7Game {
             console.log('🎯 Duplicate Second Chance UI is visible - hiding buttons via fallback logic');
         }
         
-        if (mustSelectFreezeTarget || mustSelectSecondChanceRecipient || duplicateSecondChanceUIVisible) {
+        if (flip3AssignmentUIVisible) {
+            console.log('🎯 Flip 3 assignment UI is visible - hiding buttons');
+        }
+        
+        if (mustSelectFreezeTarget || mustSelectSecondChanceRecipient || duplicateSecondChanceUIVisible || flip3AssignmentUIVisible) {
             this.drawBtn.classList.add('hidden');
             this.stickBtn.classList.add('hidden');
-            console.log('🚫 Buttons hidden due to special UI active (freeze:', mustSelectFreezeTarget, 'secondChance:', mustSelectSecondChanceRecipient, 'UIVisible:', duplicateSecondChanceUIVisible, ')');
+            console.log('🚫 Buttons hidden due to special UI active (freeze:', mustSelectFreezeTarget, 'secondChance:', mustSelectSecondChanceRecipient, 'UIVisible:', duplicateSecondChanceUIVisible, 'flip3UI:', flip3AssignmentUIVisible, ')');
         } else {
             // CRITICAL FIX: Only show buttons if not in any special UI state AND not awaiting second chance
             // Don't show buttons if we're still in any kind of second chance flow
-            if (!this.awaitingSecondChance && !duplicateSecondChanceUIVisible) {
+            if (!this.awaitingSecondChance && !duplicateSecondChanceUIVisible && !flip3AssignmentUIVisible) {
                 this.drawBtn.classList.remove('hidden');
                 this.stickBtn.classList.remove('hidden');
                 console.log('👁️ Buttons made visible - no special UI active and not awaiting second chance');
             } else {
-                // ENSURE buttons stay hidden during any second chance flow
+                // ENSURE buttons stay hidden during any second chance flow or special UI
                 this.drawBtn.classList.add('hidden');
                 this.stickBtn.classList.add('hidden');
                 console.log('🚫 Buttons kept hidden - awaitingSecondChance or special UI still active');
@@ -2247,7 +2305,7 @@ class Flip7Game {
             `;
         }
         
-        // Special rendering for Flip 3 cards to show only cycle emoji in center
+        // Special rendering for Flip 3 cards to show only number 3 in center
         if (card.value === 'flip-3') {
             return `
                 <div class="card ${colorClass}" data-value="${card.value}">
@@ -2256,7 +2314,7 @@ class Flip7Game {
                         <div class="card-suit"> </div>
                     </div>
                     <div class="card-center">
-                        <div class="card-value-large">🔄</div>
+                        <div class="card-value-large">3</div>
                     </div>
                     <div class="card-corner card-corner-bottom">
                         <div class="card-rank">3</div>
@@ -2323,7 +2381,7 @@ class Flip7Game {
         // Handle special cards
         if (value === 'freeze') return '❄️'; // Snowflake emoji for freeze cards
         if (value === 'second-chance') return '✚'; // Cross symbol for second chance cards (health/medical theme)
-        if (value === 'flip-3') return '🔄'; // Repeat/cycle symbol for flip 3 cards
+        if (value === 'flip-3') return '3'; // Number 3 for flip 3 cards
         if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
         if (value === 'multiplier') return '×'; // Multiplication symbol for multiplier cards
         
@@ -2543,7 +2601,7 @@ class Flip7Game {
             let displayValue = card.value;
             if (card.value === 'freeze') displayValue = '❄';
             else if (card.value === 'second-chance') displayValue = '✚';
-            else if (card.value === 'flip-3') displayValue = '🔄';
+            else if (card.value === 'flip-3') displayValue = '3';
             else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
             else if (card.value === 'multiplier') displayValue = card.multiplier || '?';
             
@@ -2560,7 +2618,7 @@ class Flip7Game {
             } else if (card.value === 'second-chance') {
                 cardTitle = 'Second Chance Card ✚';
             } else if (card.value === 'flip-3') {
-                cardTitle = 'Flip 3 Card 🔄';
+                cardTitle = 'Flip 3 Card';
             } else if (card.value === 'bonus') {
                 cardTitle = `Bonus Points Card +${card.bonusPoints || '?'}`;
             } else if (card.value === 'multiplier') {
@@ -2587,7 +2645,7 @@ class Flip7Game {
                 <div class="mini-card ${colorClass} ${additionalClasses}" 
                      title="${cardTitle}">
                     <div class="mini-card-value">${displayValue}</div>
-                    <div class="mini-card-suit">${(card.value === 'freeze' || card.value === 'second-chance') ? '' : suitSymbol}</div>
+                    <div class="mini-card-suit">${(card.value === 'freeze' || card.value === 'second-chance' || card.value === 'flip-3') ? '' : suitSymbol}</div>
                 </div>
             `;
         }).join('');
@@ -2637,18 +2695,20 @@ class Flip7Game {
         this.freezeApplyBtn.disabled = true;
         
         // CRITICAL FIX: Only show buttons if we're not in any other special UI state
-        // Check if duplicate Second Chance UI is active before showing buttons
+        // Check for all special UIs: duplicate Second Chance, Flip 3 assignment, and awaiting second chance
         const duplicateSecondChanceUIVisible = !this.secondChanceTargetSelect.classList.contains('hidden');
         const mustSelectSecondChanceRecipient = this.gameState.duplicateSecondChance && 
                                                this.gameState.duplicateSecondChance.playerNumber === this.playerNumber;
+        const flip3TargetSelect = document.getElementById('flip3-target-select');
+        const flip3AssignmentUIVisible = flip3TargetSelect && !flip3TargetSelect.classList.contains('hidden');
         
-        if (!duplicateSecondChanceUIVisible && !mustSelectSecondChanceRecipient && !this.awaitingSecondChance) {
+        if (!duplicateSecondChanceUIVisible && !mustSelectSecondChanceRecipient && !this.awaitingSecondChance && !flip3AssignmentUIVisible) {
             // Only show buttons if no other special UI is active
             this.drawBtn.classList.remove('hidden');
             this.stickBtn.classList.remove('hidden');
             console.log('🔧 hideFreezeTargetSelection: Buttons shown - no special UI active');
         } else {
-            console.log('🔧 hideFreezeTargetSelection: Buttons kept hidden - other special UI active (duplicateUI:', duplicateSecondChanceUIVisible, 'mustSelect:', mustSelectSecondChanceRecipient, 'awaiting:', this.awaitingSecondChance, ')');
+            console.log('🔧 hideFreezeTargetSelection: Buttons kept hidden - other special UI active (duplicateUI:', duplicateSecondChanceUIVisible, 'mustSelect:', mustSelectSecondChanceRecipient, 'awaiting:', this.awaitingSecondChance, 'flip3UI:', flip3AssignmentUIVisible, ')');
         }
     }
 
@@ -2983,6 +3043,67 @@ class Flip7Game {
         console.log(`Card animation: hand at (${startX}, ${startY}) → discard at (${targetX}, ${targetY})`);
     }
 
+    animateCardBetweenPlayers(fromPlayerNumber, toPlayerNumber, card, onComplete) {
+        console.log(`Animating card from player ${fromPlayerNumber} to player ${toPlayerNumber}`);
+        
+        // Find source and target hand displays
+        let sourceHandDisplay = null;
+        let targetHandDisplay = null;
+        
+        const allRows = document.querySelectorAll('#players-table tr.player-row');
+        for (const row of allRows) {
+            const playerNumElement = row.querySelector('.player-number');
+            if (playerNumElement) {
+                const playerNum = playerNumElement.textContent.trim();
+                if (playerNum === fromPlayerNumber.toString()) {
+                    sourceHandDisplay = row.querySelector('.player-hand-display');
+                } else if (playerNum === toPlayerNumber.toString()) {
+                    targetHandDisplay = row.querySelector('.player-hand-display');
+                }
+            }
+        }
+        
+        if (!sourceHandDisplay || !targetHandDisplay) {
+            console.log('Could not find source or target hand displays');
+            onComplete();
+            return;
+        }
+        
+        // Get positions
+        const sourceRect = sourceHandDisplay.getBoundingClientRect();
+        const targetRect = targetHandDisplay.getBoundingClientRect();
+        
+        // Create flying card
+        const flyingCard = document.createElement('div');
+        flyingCard.className = 'flying-card mini-card ' + this.getCardColorClass(card.value);
+        flyingCard.innerHTML = `
+            <div class="card-value">${this.getCardDisplayText(card)}</div>
+            <div class="card-suit">${this.getCardSuit(card.value)}</div>
+        `;
+        
+        // Position at source
+        flyingCard.style.position = 'fixed';
+        flyingCard.style.left = sourceRect.left + 'px';
+        flyingCard.style.top = sourceRect.top + 'px';
+        flyingCard.style.zIndex = '1000';
+        flyingCard.style.transition = 'all 0.8s ease-in-out';
+        flyingCard.style.pointerEvents = 'none';
+        
+        document.body.appendChild(flyingCard);
+        
+        // Animate to target
+        setTimeout(() => {
+            flyingCard.style.left = targetRect.left + 'px';
+            flyingCard.style.top = targetRect.top + 'px';
+        }, 50);
+        
+        // Remove after animation and call completion
+        setTimeout(() => {
+            document.body.removeChild(flyingCard);
+            onComplete();
+        }, 850);
+    }
+
     showFlip3SelectionUI(data) {
         console.log('showFlip3SelectionUI called with data:', data);
         
@@ -3015,6 +3136,9 @@ class Flip7Game {
         
         // Update turn status
         this.turnStatus.textContent = 'Assign Flip 3 card to another player';
+        
+        // Update button visibility to hide Twist/Stick buttons
+        this.updateActionButtons();
     }
 
     createFlip3SelectionElements() {
@@ -3061,6 +3185,9 @@ class Flip7Game {
         
         // Reset turn status
         this.turnStatus.textContent = 'Your Turn';
+        
+        // Update button visibility to show Twist/Stick buttons again
+        this.updateActionButtons();
     }
 
     updateFlip3AssignButton() {

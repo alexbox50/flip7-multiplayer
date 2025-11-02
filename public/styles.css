@@ -444,8 +444,8 @@ body {
 }
 
 .mini-card.flip3-card {
-    color: white;
-    background: #8A2BE2;
+    color: black;
+    background: #EAF012;
     border-color: black;
     font-weight: bold;
 }
@@ -1197,8 +1197,8 @@ body {
 }
 
 .flip3-card {
-    color: white;
-    background: #8A2BE2;
+    color: black;
+    background: #EAF012;
     border: 1px solid black;
     font-weight: bold;
 }
