@@ -443,6 +443,13 @@ body {
     font-weight: bold;
 }
 
+.mini-card.flip3-card {
+    color: white;
+    background: #8A2BE2;
+    border-color: black;
+    font-weight: bold;
+}
+
 .mini-card.bonus-card {
     color: white;
     background: #ff8000;
@@ -1186,6 +1193,13 @@ body {
 .second-chance-text {
     font-size: 0.7em;
     margin-top: 2px;
+    font-weight: bold;
+}
+
+.flip3-card {
+    color: white;
+    background: #8A2BE2;
+    border: 1px solid black;
     font-weight: bold;
 }
 

@@ -1113,10 +1113,16 @@ io.on('connection', (socket) => {
                         isFirstCard: true
                     });
                     
-                    io.to('game').emit('flip-3-assignment', {
+                    // Show Flip 3 assignment UI to the player who drew it
+                    io.to('game').emit('show-flip3-selection', {
                         playerNumber,
                         playerName: player.name,
-                        card: drawnCard
+                        availablePlayers: Object.keys(gameState.players)
+                            .filter(pNum => pNum !== playerNumber.toString() && gameState.players[pNum].status === 'playing')
+                            .map(pNum => ({
+                                number: parseInt(pNum),
+                                name: gameState.players[pNum].name
+                            }))
                     });
                     
                     io.to('game').emit('game-state', gameState);
@@ -1320,10 +1326,16 @@ io.on('connection', (socket) => {
                         isFirstCard: false
                     });
                     
-                    io.to('game').emit('flip-3-assignment', {
+                    // Show Flip 3 assignment UI to the player who drew it
+                    io.to('game').emit('show-flip3-selection', {
                         playerNumber,
                         playerName: player.name,
-                        card: drawnCard
+                        availablePlayers: Object.keys(gameState.players)
+                            .filter(pNum => pNum !== playerNumber.toString() && gameState.players[pNum].status === 'playing')
+                            .map(pNum => ({
+                                number: parseInt(pNum),
+                                name: gameState.players[pNum].name
+                            }))
                     });
                     
                     io.to('game').emit('game-state', gameState);

@@ -2247,6 +2247,25 @@ class Flip7Game {
             `;
         }
         
+        // Special rendering for Flip 3 cards to show only cycle emoji in center
+        if (card.value === 'flip-3') {
+            return `
+                <div class="card ${colorClass}" data-value="${card.value}">
+                    <div class="card-corner card-corner-top">
+                        <div class="card-rank">Flip</div>
+                        <div class="card-suit"> </div>
+                    </div>
+                    <div class="card-center">
+                        <div class="card-value-large">🔄</div>
+                    </div>
+                    <div class="card-corner card-corner-bottom">
+                        <div class="card-rank">3</div>
+                        <div class="card-suit"> </div>
+                    </div>
+                </div>
+            `;
+        }
+        
         // Special rendering for Multiplier cards with multiplier value on top and × underneath
         if (card.value === 'multiplier') {
             return `
@@ -2289,6 +2308,7 @@ class Flip7Game {
         // Handle special cards
         if (value === 'freeze') return 'freeze-card';
         if (value === 'second-chance') return 'second-chance-card';
+        if (value === 'flip-3') return 'flip3-card';
         if (value === 'bonus') return 'bonus-card';
         if (value === 'multiplier') return 'multiplier-card';
         
@@ -2303,6 +2323,7 @@ class Flip7Game {
         // Handle special cards
         if (value === 'freeze') return '❄️'; // Snowflake emoji for freeze cards
         if (value === 'second-chance') return '✚'; // Cross symbol for second chance cards (health/medical theme)
+        if (value === 'flip-3') return '🔄'; // Repeat/cycle symbol for flip 3 cards
         if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
         if (value === 'multiplier') return '×'; // Multiplication symbol for multiplier cards
         
@@ -2522,6 +2543,7 @@ class Flip7Game {
             let displayValue = card.value;
             if (card.value === 'freeze') displayValue = '❄';
             else if (card.value === 'second-chance') displayValue = '✚';
+            else if (card.value === 'flip-3') displayValue = '🔄';
             else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
             else if (card.value === 'multiplier') displayValue = card.multiplier || '?';
             
@@ -2536,7 +2558,9 @@ class Flip7Game {
                     cardTitle = 'Freeze Card ❄️';
                 }
             } else if (card.value === 'second-chance') {
-                cardTitle = 'Second Chance Card �';
+                cardTitle = 'Second Chance Card ✚';
+            } else if (card.value === 'flip-3') {
+                cardTitle = 'Flip 3 Card 🔄';
             } else if (card.value === 'bonus') {
                 cardTitle = `Bonus Points Card +${card.bonusPoints || '?'}`;
             } else if (card.value === 'multiplier') {
