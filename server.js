@@ -7,12 +7,17 @@ const { v4: uuidv4 } = require('uuid');
 // Parse command line arguments
 const args = process.argv.slice(2);
 let customDeck = null;
+let customPort = null;
 
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--deck' && i + 1 < args.length) {
         customDeck = args[i + 1];
         console.log('🎯 Using custom deck:', customDeck);
-        break;
+        i++; // Skip next argument as it's the value
+    } else if (args[i] === '--port' && i + 1 < args.length) {
+        customPort = parseInt(args[i + 1]);
+        console.log('🎯 Using custom port:', customPort);
+        i++; // Skip next argument as it's the value
     }
 }
 
@@ -2288,7 +2293,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = customPort || process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => {
     console.log(`Flip 7 server running on ${HOST}:${PORT}`);
