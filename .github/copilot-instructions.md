@@ -22,3 +22,7 @@ This is a real-time multiplayer browser-based card game implementing the Flip 7 
 - Use WebSocket events for real-time game state updates
 - Implement proper error handling for network issues
 - Ensure responsive design for various screen sizes
+
+## Debugging Guidelines
+- Close and restart the browser before every test involving Playwright to ensure a clean state
+- Every terminal command should start in a new terminal (do not reuse terminals)

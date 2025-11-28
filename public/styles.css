@@ -436,16 +436,24 @@ body {
     font-weight: normal;
 }
 
-.mini-card.second-chance-card {
+.mini-card.flip3-card {
     color: white;
-    background: red;
+    background: linear-gradient(135deg, #9370DB, #663399);
     border-color: black;
     font-weight: bold;
 }
 
-.mini-card.flip3-card {
-    color: black;
-    background: #EAF012;
+.mini-card.used-flip3-card {
+    color: white;
+    background: rgba(147, 112, 219, 0.7);
+    border-color: black;
+    opacity: 0.7;
+    font-weight: normal;
+}
+
+.mini-card.second-chance-card {
+    color: white;
+    background: red;
     border-color: black;
     font-weight: bold;
 }
@@ -1183,6 +1191,13 @@ body {
     font-weight: bold;
 }
 
+.flip3-card {
+    color: white;
+    background: linear-gradient(135deg, #9370DB, #663399);
+    border: 1px solid black;
+    font-weight: bold;
+}
+
 .second-chance-card {
     color: white;
     background: red;
@@ -1193,13 +1208,6 @@ body {
 .second-chance-text {
     font-size: 0.7em;
     margin-top: 2px;
-    font-weight: bold;
-}
-
-.flip3-card {
-    color: black;
-    background: #EAF012;
-    border: 1px solid black;
     font-weight: bold;
 }
 
@@ -1438,6 +1446,43 @@ body {
     cursor: not-allowed;
 }
 
+/* Flip 3 Card Selection Styles */
+.flip3-select {
+    padding: 8px 12px;
+    border: 2px solid #9370DB;
+    border-radius: 5px;
+    background: white;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    min-width: 200px;
+}
+
+.flip3-select:focus {
+    outline: none;
+    border-color: #663399;
+    box-shadow: 0 0 5px rgba(147, 112, 219, 0.3);
+}
+
+.flip3-btn {
+    background: linear-gradient(135deg, #9370DB, #663399);
+    color: white;
+    border: none;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.flip3-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, #663399, #4B0082);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(147, 112, 219, 0.3);
+}
+
+.flip3-btn:disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
+
 /* Second Chance target selection styling */
 .second-chance-select {
     padding: 8px 12px;
@@ -1470,53 +1515,6 @@ body {
 }
 
 .second-chance-btn:disabled {
-    background: #ccc;
-    color: #888;
-    cursor: not-allowed;
-}
-
-/* Flip 3 target selection styling */
-.flip3-select,
-#flip3-target-select {
-    padding: 8px 12px;
-    border: 2px solid #8A2BE2;
-    border-radius: 5px;
-    background: white;
-    color: #333;
-    font-size: 1rem;
-    margin-bottom: 10px;
-    min-width: 200px;
-}
-
-.flip3-select:focus,
-#flip3-target-select:focus {
-    outline: none;
-    border-color: #6A1B9A;
-    box-shadow: 0 0 5px rgba(138, 43, 226, 0.3);
-}
-
-.flip3-btn,
-#flip3-assign-btn {
-    background: linear-gradient(135deg, #8A2BE2, #6A1B9A);
-    color: white;
-    border: none;
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    padding: 10px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.flip3-btn:not(:disabled):hover,
-#flip3-assign-btn:not(:disabled):hover {
-    background: linear-gradient(135deg, #6A1B9A, #4A148C);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(138, 43, 226, 0.3);
-}
-
-.flip3-btn:disabled,
-#flip3-assign-btn:disabled {
     background: #ccc;
     color: #888;
     cursor: not-allowed;
