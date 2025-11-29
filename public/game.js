@@ -1180,6 +1180,12 @@ class Flip7Game {
                     displayStatus = 'playing'; // Show as playing during animation
                 }
             }
+
+            // Only the active turn should show as PLAYING; other actives show as WAITING
+            const isCurrentTurn = parseInt(playerNumber) === currentPlayerToHighlight;
+            if (displayStatus === 'playing' && !isCurrentTurn) {
+                displayStatus = 'waiting';
+            }
             
             // Generate status class, considering winner override
             let statusClass = `status-${displayStatus}`;
@@ -1423,6 +1429,12 @@ class Flip7Game {
                 } else {
                     displayStatus = 'playing'; // Show as playing during animation
                 }
+            }
+
+            // Only the active turn should show as PLAYING; other actives show as WAITING
+            const isCurrentTurn = this.gameState && parseInt(playerNumber) === this.gameState.currentPlayer;
+            if (displayStatus === 'playing' && !isCurrentTurn) {
+                displayStatus = 'waiting';
             }
             
             // Generate status class, considering winner override

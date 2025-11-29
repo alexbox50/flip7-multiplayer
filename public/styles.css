@@ -543,6 +543,11 @@ body {
     color: #4CAF50;
 }
 
+.status-waiting {
+    background: rgba(0, 123, 255, 0.25);
+    color: #007bff;
+}
+
 .status-stuck {
     background: rgba(255, 193, 7, 0.3);
     color: #FF9800;
