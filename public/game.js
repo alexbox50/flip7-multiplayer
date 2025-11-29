@@ -338,6 +338,7 @@ class Flip7Game {
             this.animatingCard = {
                 playerNumber: data.playerNumber,
                 card: data.card,
+                isFlip3Compelled: data.isFlip3CompelledTwist || false,
                 isBustCard: data.isBust || false, // Track if this might be a bust card
                 isFlip7: data.isFlip7 || false, // Track if this is the 7th card
                 preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
@@ -1161,9 +1162,10 @@ class Flip7Game {
             let displayStatus = player.status || 'waiting';
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
-                (player.status === 'bust' || player.status === 'flip7')) {
+                (player.status === 'bust' || player.status === 'flip7' || player.status === 'playing')) {
                 const isFlip3Bust = this.animatingCard.type === 'flip3-bust' || this.animatingCard.isFlip3Bust;
-                if (isFlip3Bust) {
+                const isFlip3Draw = this.animatingCard.isFlip3Compelled;
+                if (isFlip3Bust || isFlip3Draw) {
                     displayStatus = 'flip3';
                 } else {
                     displayStatus = 'playing'; // Show as playing during animation
@@ -1404,9 +1406,10 @@ class Flip7Game {
             let displayStatus = player.status || 'waiting';
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
-                (player.status === 'bust' || player.status === 'flip7')) {
+                (player.status === 'bust' || player.status === 'flip7' || player.status === 'playing')) {
                 const isFlip3Bust = this.animatingCard.type === 'flip3-bust' || this.animatingCard.isFlip3Bust;
-                if (isFlip3Bust) {
+                const isFlip3Draw = this.animatingCard.isFlip3Compelled;
+                if (isFlip3Bust || isFlip3Draw) {
                     displayStatus = 'flip3';
                 } else {
                     displayStatus = 'playing'; // Show as playing during animation
