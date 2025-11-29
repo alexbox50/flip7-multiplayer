@@ -2164,26 +2164,29 @@ class Flip7Game {
         
         // Update turn status text based on game state (hide for spectators)
         if (this.turnStatus) {
+            let turnMessage = "Waiting for your turn...";
+            
             if (this.isSpectator) {
-                this.turnStatus.textContent = ""; // Hide turn messages for spectators
+                turnMessage = ""; // Hide turn messages for spectators
             } else if (!this.gameState.roundInProgress) {
-                this.turnStatus.textContent = "Waiting for game to start...";
+                turnMessage = "Waiting for game to start...";
             } else if (mustSelectFreezeTarget) {
-                this.turnStatus.textContent = "Choose a player to stick with your Freeze card!";
+                turnMessage = "Choose a player to stick with your Freeze card!";
             } else if (mustSelectFlip3Target) {
-                this.turnStatus.textContent = "Choose a player to draw 3 cards with your Flip 3 card!";
+                turnMessage = "Choose a player to draw 3 cards with your Flip 3 card!";
             } else if (this.gameState.flip3CompelledTwist && this.gameState.flip3CompelledTwist.targetPlayerNumber === this.playerNumber) {
                 const twistsRemaining = this.gameState.flip3CompelledTwist.twistsRemaining;
-                this.turnStatus.textContent = `You must draw ${twistsRemaining} more cards (Flip 3 effect)`;
+                turnMessage = `You must draw ${twistsRemaining} more cards (Flip 3 effect)`;
             } else if (mustSelectSecondChanceRecipient) {
-                this.turnStatus.textContent = "Give duplicate Second Chance card to another player";
+                turnMessage = "Give duplicate Second Chance card to another player";
             } else if (canAct) {
-                // Only show "It's your turn!" when buttons are actually enabled
-                this.turnStatus.textContent = "It's your turn!";
-            } else {
-                // Show waiting message for all other cases (including animations on our turn)
-                this.turnStatus.textContent = "Waiting for your turn...";
+                // Only show "It's your turn!" when buttons are actually enabled and it's really your turn
+                turnMessage = "It's your turn!";
+            } else if (!isMyTurn) {
+                turnMessage = "Waiting for your turn...";
             }
+
+            this.turnStatus.textContent = turnMessage;
         }
         
         // Check if player is in flip-3 compelled twist state
