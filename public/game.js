@@ -955,6 +955,7 @@ class Flip7Game {
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
             card.value !== 'multiplier' &&
+            card.value !== 'flip-3' &&
             !card.ignored
         );
         const uniqueValues = new Set(numericCards.map(card => card.value));
@@ -973,10 +974,16 @@ class Flip7Game {
         // Calculate base scoring value (excluding multiplier cards)
         let baseValue = 0;
         filteredCards.forEach(card => {
-            if (card.value !== 'freeze' && card.value !== 'second-chance' && card.value !== 'multiplier' && !card.ignored) {
+            if (
+                card.value !== 'freeze' && 
+                card.value !== 'second-chance' && 
+                card.value !== 'multiplier' && 
+                card.value !== 'flip-3' &&
+                !card.ignored
+            ) {
                 if (card.value === 'bonus') {
                     baseValue += card.bonusPoints;
-                } else {
+                } else if (typeof card.value === 'number') {
                     baseValue += card.value;
                 }
             }
@@ -1022,6 +1029,7 @@ class Flip7Game {
             card.value !== 'second-chance' && 
             card.value !== 'bonus' &&
             card.value !== 'multiplier' &&
+            card.value !== 'flip-3' &&
             !card.ignored
         );
         
@@ -1046,7 +1054,9 @@ class Flip7Game {
         // Calculate base value from unique cards plus bonus cards
         let baseValue = 0;
         uniqueCards.forEach(card => {
-            baseValue += card.value;
+            if (typeof card.value === 'number') {
+                baseValue += card.value;
+            }
         });
         
         // Add bonus cards
@@ -1627,9 +1637,10 @@ class Flip7Game {
                 // Top card - show face up
                 cardElement.className = 'deck-stack-card face-up-discard-card';
                 const colorClass = this.getCardColorClass(topCard.value);
-                const suitSymbol = this.getCardSuit(topCard.value);
+                let suitSymbol = this.getCardSuit(topCard.value);
                 let displayValue = topCard.value;
                 if (topCard.value === 'freeze') displayValue = '❄';
+                else if (topCard.value === 'flip-3') displayValue = '3';
                 else if (topCard.value === 'second-chance') displayValue = '✚';
                 else if (topCard.value === 'bonus') displayValue = topCard.bonusPoints;
                 else if (topCard.value === 'multiplier') displayValue = topCard.multiplier;
@@ -1643,6 +1654,10 @@ class Flip7Game {
                 } else if (colorClass === 'freeze-card') {
                     cardColor = 'white';
                     cardBackground = 'deepskyblue';
+                } else if (colorClass === 'flip3-card') {
+                    cardColor = '#1f1f1f';
+                    cardBackground = '#eaf012';
+                    suitSymbol = '';
                 } else if (colorClass === 'second-chance-card') {
                     cardColor = 'white';
                     cardBackground = 'red';
@@ -1664,8 +1679,8 @@ class Flip7Game {
                     border: 1px solid #333;
                 `;
                 
-                // For Freeze and Second Chance cards, show only one emoji to match the main card rendering
-                if (topCard.value === 'freeze' || topCard.value === 'second-chance') {
+                // For Freeze, Flip 3, and Second Chance cards, show only one centered glyph to match main rendering
+                if (topCard.value === 'freeze' || topCard.value === 'flip-3' || topCard.value === 'second-chance') {
                     cardElement.innerHTML = `
                         <div style="font-size: 1.5rem; line-height: 1; font-weight: bold;">${displayValue}</div>
                     `;
@@ -1822,7 +1837,7 @@ class Flip7Game {
             
             let displayValue = drawnCard.value;
             if (drawnCard.value === 'freeze') displayValue = '❄';
-            else if (drawnCard.value === 'flip-3') displayValue = '🔄';
+            else if (drawnCard.value === 'flip-3') displayValue = '3';
             else if (drawnCard.value === 'second-chance') displayValue = '✚';
             else if (drawnCard.value === 'bonus') displayValue = drawnCard.bonusPoints;
             else if (drawnCard.value === 'multiplier') displayValue = drawnCard.multiplier;
@@ -1837,8 +1852,8 @@ class Flip7Game {
                 cardColor = 'white';
                 cardBackground = 'deepskyblue';
             } else if (colorClass === 'flip3-card') {
-                cardColor = 'white';
-                cardBackground = 'linear-gradient(135deg, #9370DB, #663399)';
+                cardColor = '#1f1f1f';
+                cardBackground = '#eaf012';
             } else if (colorClass === 'second-chance-card') {
                 cardColor = 'white';
                 cardBackground = 'red';
@@ -2217,6 +2232,8 @@ class Flip7Game {
             displayValue = card.multiplier || '?';
         } else if (card.value === 'second-chance') {
             displayValue = 'Second Chance';
+        } else if (card.value === 'flip-3') {
+            displayValue = '3';
         }
         
         // Special rendering for Freeze cards to show only snowflake emoji in center
@@ -2313,7 +2330,7 @@ class Flip7Game {
     getCardSuit(value) {
         // Handle special cards
         if (value === 'freeze') return '❄️'; // Snowflake emoji for freeze cards
-        if (value === 'flip-3') return '🔄'; // Recycle emoji for flip-3 cards
+        if (value === 'flip-3') return ''; // No suit/emoji for flip-3 card
         if (value === 'second-chance') return '✚'; // Cross symbol for second chance cards (health/medical theme)
         if (value === 'bonus') return '+'; // Plus symbol for bonus points cards
         if (value === 'multiplier') return '×'; // Multiplication symbol for multiplier cards
@@ -2533,6 +2550,7 @@ class Flip7Game {
             
             let displayValue = card.value;
             if (card.value === 'freeze') displayValue = '❄';
+            else if (card.value === 'flip-3') displayValue = '3';
             else if (card.value === 'second-chance') displayValue = '✚';
             else if (card.value === 'bonus') displayValue = card.bonusPoints || '?';
             else if (card.value === 'multiplier') displayValue = card.multiplier || '?';
@@ -2549,6 +2567,8 @@ class Flip7Game {
                 }
             } else if (card.value === 'second-chance') {
                 cardTitle = 'Second Chance Card �';
+            } else if (card.value === 'flip-3') {
+                cardTitle = 'Flip 3 Card';
             } else if (card.value === 'bonus') {
                 cardTitle = `Bonus Points Card +${card.bonusPoints || '?'}`;
             } else if (card.value === 'multiplier') {
@@ -2992,6 +3012,10 @@ class Flip7Game {
             displayValue = '❄';
             cardColor = 'white';
             cardBackground = 'deepskyblue';
+        } else if (card.value === 'flip-3') {
+            displayValue = '3';
+            cardColor = '#1f1f1f';
+            cardBackground = '#eaf012';
         } else if (card.value === 'second-chance') {
             displayValue = '✚';
             cardColor = 'white';
