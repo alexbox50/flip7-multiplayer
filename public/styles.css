@@ -910,11 +910,15 @@ body {
 }
 
 /* Twist button - familiar blue */
-#draw-btn {
+#draw-btn,
+#flip3-assign-btn,
+#start-round-btn {
     background: #007bff;
 }
 
-#draw-btn:not(:disabled):hover {
+#draw-btn:not(:disabled):hover,
+#flip3-assign-btn:not(:disabled):hover,
+#start-round-btn:not(:disabled):hover {
     background: #0056b3;
 }
 
@@ -1467,26 +1471,6 @@ body {
     outline: none;
     border-color: #663399;
     box-shadow: 0 0 5px rgba(147, 112, 219, 0.3);
-}
-
-.flip3-btn {
-    background: linear-gradient(135deg, #9370DB, #663399);
-    color: white;
-    border: none;
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
-
-.flip3-btn:not(:disabled):hover {
-    background: linear-gradient(135deg, #663399, #4B0082);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(147, 112, 219, 0.3);
-}
-
-.flip3-btn:disabled {
-    background: #ccc;
-    color: #888;
-    cursor: not-allowed;
 }
 
 /* Second Chance target selection styling */
