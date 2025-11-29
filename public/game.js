@@ -416,6 +416,9 @@ class Flip7Game {
                         }, 1000);
                     });
                 }, 50);
+            } else if (data.drawnCard && this.animatingCard && this.animatingCard.playerNumber === data.playerNumber) {
+                // Already animating this player's card (common in Flip 3). Tag it as flip3-bust to keep status visible.
+                this.animatingCard.type = data.isFlip3Compelled ? 'flip3-bust' : (this.animatingCard.type || 'bust');
             } else {
                 // Just update display if no animation possible
                 this.updateGameDisplay();
@@ -1159,7 +1162,8 @@ class Flip7Game {
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
                 (player.status === 'bust' || player.status === 'flip7')) {
-                if (this.animatingCard.type === 'flip3-bust') {
+                const isFlip3Bust = this.animatingCard.type === 'flip3-bust' || this.animatingCard.isFlip3Bust;
+                if (isFlip3Bust) {
                     displayStatus = 'flip3';
                 } else {
                     displayStatus = 'playing'; // Show as playing during animation
@@ -1401,7 +1405,8 @@ class Flip7Game {
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
                 (player.status === 'bust' || player.status === 'flip7')) {
-                if (this.animatingCard.type === 'flip3-bust') {
+                const isFlip3Bust = this.animatingCard.type === 'flip3-bust' || this.animatingCard.isFlip3Bust;
+                if (isFlip3Bust) {
                     displayStatus = 'flip3';
                 } else {
                     displayStatus = 'playing'; // Show as playing during animation
