@@ -678,6 +678,15 @@ class Flip7Game {
 
         this.socket.on('flip-3-compelled-twist-complete', (data) => {
             this.showMessage(`${data.playerName} completed drawing 3 cards from Flip 3 effect.`, 'success');
+            
+            // If we still have their status set as FLIP 3 on the client, clear it now
+            if (this.gameState && this.gameState.players && this.gameState.players[data.playerNumber]) {
+                const player = this.gameState.players[data.playerNumber];
+                if (player.status === 'flip3') {
+                    player.status = 'playing';
+                }
+            }
+            this.updateGameDisplay();
         });
 
         this.socket.on('flip-3-card-set-aside', (data) => {
