@@ -477,7 +477,8 @@ function handleFlip3CompelledTwist(socket, playerNumber) {
                 playerName: player.name,
                 drawnCard: drawnCard,
                 handValue: 0,
-                totalPoints: player.roundPoints
+                totalPoints: player.roundPoints,
+                isFlip3Compelled: true
             });
             
             continueAfterFlip3(flip3State);

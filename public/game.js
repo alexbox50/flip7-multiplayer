@@ -396,6 +396,7 @@ class Flip7Game {
                 this.animatingCard = {
                     playerNumber: data.playerNumber,
                     card: data.drawnCard,
+                    type: data.isFlip3Compelled ? 'flip3-bust' : 'bust',
                     preserveCurrentPlayer: data.playerNumber // Keep the drawing player highlighted during animation
                 };
                 
@@ -1158,7 +1159,11 @@ class Flip7Game {
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
                 (player.status === 'bust' || player.status === 'flip7')) {
-                displayStatus = 'playing'; // Show as playing during animation
+                if (this.animatingCard.type === 'flip3-bust') {
+                    displayStatus = 'flip3';
+                } else {
+                    displayStatus = 'playing'; // Show as playing during animation
+                }
             }
             
             // Generate status class, considering winner override
@@ -1396,7 +1401,11 @@ class Flip7Game {
             if (this.animatingCard && 
                 this.animatingCard.playerNumber === parseInt(playerNumber) && 
                 (player.status === 'bust' || player.status === 'flip7')) {
-                displayStatus = 'playing'; // Show as playing during animation
+                if (this.animatingCard.type === 'flip3-bust') {
+                    displayStatus = 'flip3';
+                } else {
+                    displayStatus = 'playing'; // Show as playing during animation
+                }
             }
             
             // Generate status class, considering winner override
