@@ -559,6 +559,12 @@ body {
     font-weight: bold;
 }
 
+.status-flip3 {
+    background: rgba(234, 240, 18, 0.3);
+    color: #6b6b00;
+    font-weight: bold;
+}
+
 .status-win {
     background: rgba(255, 215, 0, 0.3);
     color: #FFD700;

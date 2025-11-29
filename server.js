@@ -111,6 +111,11 @@ const playerSlots = Array.from({length: MAX_PLAYERS}, (_, i) => ({
     playerId: null
 }));
 
+// Helper to treat Flip 3 status as an active player state
+function isActivePlayer(player) {
+    return player && (player.status === 'playing' || player.status === 'flip3');
+}
+
 // Flip 7 game logic
 function createDeck() {
     // Default deck creation
@@ -361,7 +366,7 @@ function calculateHandValue(playerNumber) {
 }
 
 function checkRoundEnd() {
-    const playingPlayers = Object.values(gameState.players).filter(p => p.status === 'playing');
+    const playingPlayers = Object.values(gameState.players).filter(p => isActivePlayer(p));
     return playingPlayers.length === 0;
 }
 
@@ -390,7 +395,7 @@ function nextPlayer() {
     for (let i = 1; i <= playerNumbers.length; i++) {
         const nextIndex = (currentIndex + i) % playerNumbers.length;
         const nextPlayerNumber = playerNumbers[nextIndex];
-        if (gameState.players[nextPlayerNumber].status === 'playing') {
+        if (isActivePlayer(gameState.players[nextPlayerNumber])) {
             gameState.currentPlayer = nextPlayerNumber;
             return;
         }
@@ -527,7 +532,7 @@ function processNextSetAsideCard(flip3State, cardIndex) {
             playerNumber: targetPlayerNumber,
             playerName: gameState.players[targetPlayerNumber].name,
             availablePlayers: Object.keys(gameState.players)
-                .filter(pNum => pNum !== targetPlayerNumber.toString() && gameState.players[pNum].status === 'playing')
+                .filter(pNum => pNum !== targetPlayerNumber.toString() && isActivePlayer(gameState.players[pNum]))
                 .map(pNum => ({
                     number: parseInt(pNum),
                     name: gameState.players[pNum].name
@@ -552,7 +557,7 @@ function processNextSetAsideCard(flip3State, cardIndex) {
             playerNumber: targetPlayerNumber,
             playerName: gameState.players[targetPlayerNumber].name,
             availablePlayers: Object.keys(gameState.players)
-                .filter(pNum => gameState.players[pNum].status === 'playing')
+                .filter(pNum => isActivePlayer(gameState.players[pNum]))
                 .map(pNum => ({
                     number: parseInt(pNum),
                     name: gameState.players[pNum].name
@@ -574,6 +579,12 @@ function continueAfterFlip3(flip3State) {
     console.log(`Completing Flip 3 effect for player ${flip3State.targetPlayerNumber}`);
     
     const continuation = flip3State?.onComplete;
+
+    // Restore player status from FLIP 3 back to PLAYING if still active
+    const targetPlayer = gameState.players[flip3State.targetPlayerNumber];
+    if (targetPlayer && targetPlayer.status === 'flip3') {
+        targetPlayer.status = 'playing';
+    }
     
     // Clear the Flip 3 compelled twist state
     gameState.flip3CompelledTwist = null;
@@ -886,7 +897,7 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (player.status !== 'playing') {
+        if (!isActivePlayer(player)) {
             socket.emit('invalid-move', { message: 'You are not actively playing' });
             return;
         }
@@ -1002,7 +1013,7 @@ io.on('connection', (socket) => {
                         // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.number !== playerNumber && 
-                            p.status === 'playing' && 
+                            isActivePlayer(p) && 
                             p.cards.length > 0 &&
                             !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
                         );
@@ -1109,92 +1120,46 @@ io.on('connection', (socket) => {
                 }
                 
                 // Check if it's a Flip 3 card
-
                 if (drawnCard.value === 'flip-3') {
                     console.log('First draw: Flip 3 card detected!');
-                    // Check if there are other players with "playing" status to assign to
-                    const playingPlayers = Object.keys(gameState.players).filter(pNum => 
-                        gameState.players[pNum].status === 'playing'
-                    );
-                    console.log(`First draw: Found ${playingPlayers.length} playing players: ${playingPlayers.join(', ')}`);
                     
-                    if (playingPlayers.length > 1) {
-                        console.log('First draw: Multiple players - showing assignment UI');
-                        // Keep flip-3 card in hand for display, but set flip-3 state
-                        gameState.flip3CardActive = true;
-                        gameState.flip3CardPlayer = playerNumber;
-                        
-                        // First send regular card-drawn event for animation
-                        io.to('game').emit('card-drawn', {
+                    // Keep flip-3 card in hand for display, and always show assignment UI (even if only one active player)
+                    gameState.flip3CardActive = true;
+                    gameState.flip3CardPlayer = playerNumber;
+                    
+                    // First send regular card-drawn event for animation
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: true
+                    });
+                    
+                    // Then send flip-3-card-drawn event to trigger target selection UI
+                    setTimeout(() => {
+                        io.to('game').emit('flip-3-card-drawn', {
                             playerNumber,
                             playerName: player.name,
                             card: drawnCard,
                             isFirstCard: true
                         });
-                        
-                        // Then send flip-3-card-drawn event to trigger target selection UI
-                        setTimeout(() => {
-                            io.to('game').emit('flip-3-card-drawn', {
-                                playerNumber,
-                                playerName: player.name,
-                                card: drawnCard,
-                                isFirstCard: true
-                            });
-                        }, 1000); // Delay to allow animation to complete
-                        
-                        // Don't advance turn yet - player needs to select target
-                        io.to('game').emit('game-state', gameState);
-                        return;
-                    } else {
-                        // Only one playing player, so assign to self automatically
-                        console.log('Only one playing player, assigning Flip 3 to self');
-                        
-                        const twistsRemaining = Math.min(3, getAvailableFlip3Draws());
-                        
-                        // Set up manual twist state
-                        gameState.flip3CompelledTwist = {
-                            targetPlayerNumber: playerNumber,
-                            twistsRemaining,
-                            flippedCards: [],
-                            setAsideCards: [],
-                            originalPlayerWhoDrawFlip3: playerNumber,
-                            onComplete: null
-                        };
-                        
-                        // Remove Flip 3 card from hand and discard it
-                        const cardIndex = player.cards.findIndex(c => c.id === drawnCard.id);
-                        if (cardIndex !== -1) {
-                            player.cards.splice(cardIndex, 1);
-                            gameState.discardPile.push(drawnCard);
-                        }
-                        
-                        io.to('game').emit('card-drawn', {
-                            playerNumber,
-                            playerName: player.name,
-                            card: drawnCard,
-                            isFirstCard: true
-                        });
-                        
-                        // Auto-assign to self and start compelled twists
-                        io.to('game').emit('flip-3-assigned', {
-                            assignedBy: playerNumber,
-                            assignedByName: player.name,
-                            targetPlayer: playerNumber,
-                            targetPlayerName: player.name,
-                            card: drawnCard,
-                            isSelfAssignment: true
-                        });
-                        
-                        // Notify that player must twist (limited by available cards)
-                        io.to('game').emit('flip-3-compelled-twist-start', {
-                            playerNumber: playerNumber,
-                            playerName: player.name,
-                            twistsRemaining: twistsRemaining
-                        });
-                        
-                        io.to('game').emit('game-state', gameState);
-                        return;
-                    }
+                    }, 1000); // Delay to allow animation to complete
+                    
+                    // Show Flip 3 assignment UI listing all active players (including self)
+                    io.to('game').emit('show-flip3-selection', {
+                        playerNumber,
+                        playerName: player.name,
+                        availablePlayers: Object.keys(gameState.players)
+                            .filter(pNum => isActivePlayer(gameState.players[pNum]))
+                            .map(pNum => ({
+                                number: parseInt(pNum),
+                                name: gameState.players[pNum].name
+                            }))
+                    });
+                    
+                    // Don't advance turn yet - player needs to select target
+                    io.to('game').emit('game-state', gameState);
+                    return;
                 }
 
                 io.to('game').emit('card-drawn', {
@@ -1255,7 +1220,7 @@ io.on('connection', (socket) => {
                         // Player now has multiple Second Chance cards - need to give the duplicate to another player or discard
                         const activePlayers = Object.values(gameState.players).filter(p => 
                             p.number !== playerNumber && 
-                            p.status === 'playing' && 
+                            isActivePlayer(p) && 
                             p.cards.length > 0 &&
                             !p.cards.some(card => card.value === 'second-chance') // Exclude players who already have Second Chance cards
                         );
@@ -1374,87 +1339,43 @@ io.on('connection', (socket) => {
                 
                 // Check if it's a Flip 3 card
                 if (drawnCard.value === 'flip-3') {
-                    // Check if there are other players with "playing" status to assign to
-                    const playingPlayers = Object.keys(gameState.players).filter(pNum => 
-                        gameState.players[pNum].status === 'playing'
-                    );
+                    // Keep flip-3 card in hand for display, and always show assignment UI (even if only one active player)
+                    gameState.flip3CardActive = true;
+                    gameState.flip3CardPlayer = playerNumber;
                     
-                    if (playingPlayers.length > 1) {
-                        // Keep flip-3 card in hand for display, but set flip-3 state
-                        gameState.flip3CardActive = true;
-                        gameState.flip3CardPlayer = playerNumber;
-                        
-                        // First send regular card-drawn event for animation
-                        io.to('game').emit('card-drawn', {
+                    // First send regular card-drawn event for animation
+                    io.to('game').emit('card-drawn', {
+                        playerNumber,
+                        playerName: player.name,
+                        card: drawnCard,
+                        isFirstCard: false
+                    });
+                    
+                    // Then send flip-3-card-drawn event to trigger target selection UI
+                    setTimeout(() => {
+                        io.to('game').emit('flip-3-card-drawn', {
                             playerNumber,
                             playerName: player.name,
                             card: drawnCard,
                             isFirstCard: false
                         });
-                        
-                        // Then send flip-3-card-drawn event to trigger target selection UI
-                        setTimeout(() => {
-                            io.to('game').emit('flip-3-card-drawn', {
-                                playerNumber,
-                                playerName: player.name,
-                                card: drawnCard,
-                                isFirstCard: false
-                            });
-                        }, 1000); // Delay to allow animation to complete
-                        
-                        // Don't advance turn yet - player needs to select target
-                        io.to('game').emit('game-state', gameState);
-                        return;
-                    } else {
-                        // Only one playing player, so assign to self automatically
-                        console.log('Only one playing player, assigning Flip 3 to self');
-                        
-                        const twistsRemaining = Math.min(3, getAvailableFlip3Draws());
-                        
-                        // Set up manual twist state
-                        gameState.flip3CompelledTwist = {
-                            targetPlayerNumber: playerNumber,
-                            twistsRemaining,
-                            flippedCards: [],
-                            setAsideCards: [],
-                            originalPlayerWhoDrawFlip3: playerNumber,
-                            onComplete: null
-                        };
-                        
-                        // Remove Flip 3 card from hand and discard it
-                        const cardIndex = player.cards.findIndex(c => c.id === drawnCard.id);
-                        if (cardIndex !== -1) {
-                            player.cards.splice(cardIndex, 1);
-                            gameState.discardPile.push(drawnCard);
-                        }
-                        
-                        io.to('game').emit('card-drawn', {
-                            playerNumber,
-                            playerName: player.name,
-                            card: drawnCard,
-                            isFirstCard: false
-                        });
-                        
-                        // Auto-assign to self and start compelled twists
-                        io.to('game').emit('flip-3-assigned', {
-                            assignedBy: playerNumber,
-                            assignedByName: player.name,
-                            targetPlayer: playerNumber,
-                            targetPlayerName: player.name,
-                            card: drawnCard,
-                            isSelfAssignment: true
-                        });
-                        
-                        // Notify that player must twist (limited by available cards)
-                        io.to('game').emit('flip-3-compelled-twist-start', {
-                            playerNumber: playerNumber,
-                            playerName: player.name,
-                            twistsRemaining: twistsRemaining
-                        });
-                        
-                        io.to('game').emit('game-state', gameState);
-                        return;
-                    }
+                    }, 1000); // Delay to allow animation to complete
+                    
+                    // Show Flip 3 assignment UI listing all active players (including self)
+                    io.to('game').emit('show-flip3-selection', {
+                        playerNumber,
+                        playerName: player.name,
+                        availablePlayers: Object.keys(gameState.players)
+                            .filter(pNum => isActivePlayer(gameState.players[pNum]))
+                            .map(pNum => ({
+                                number: parseInt(pNum),
+                                name: gameState.players[pNum].name
+                            }))
+                    });
+                    
+                    // Don't advance turn yet - player needs to select target
+                    io.to('game').emit('game-state', gameState);
+                    return;
                 }
                 
                 // Check for bust (same value already in hand)
@@ -1593,7 +1514,7 @@ io.on('connection', (socket) => {
                         console.log(`=== SETTING ALL PLAYING PLAYERS TO STUCK ===`);
                         Object.keys(gameState.players).forEach(otherPlayerNumber => {
                             const otherPlayer = gameState.players[otherPlayerNumber];
-                            if (otherPlayer.status === 'playing' && parseInt(otherPlayerNumber) !== parseInt(playerNumber)) {
+                            if (isActivePlayer(otherPlayer) && parseInt(otherPlayerNumber) !== parseInt(playerNumber)) {
                                 console.log(`Setting Player ${otherPlayerNumber} (${otherPlayer.name}) from PLAYING to STUCK`);
                                 otherPlayer.status = 'stuck';
                                 // Calculate their round points based on current hand
@@ -1683,7 +1604,7 @@ io.on('connection', (socket) => {
         }
         
         const targetPlayer = gameState.players[targetPlayerNumber];
-        if (!targetPlayer || targetPlayer.status !== 'playing') {
+        if (!targetPlayer || !isActivePlayer(targetPlayer)) {
             socket.emit('invalid-move', { message: 'Invalid target player' });
             return;
         }
@@ -1792,7 +1713,7 @@ io.on('connection', (socket) => {
         }
         
         const targetPlayer = gameState.players[targetPlayerNumber];
-        if (!targetPlayer || targetPlayer.status !== 'playing') {
+        if (!targetPlayer || !isActivePlayer(targetPlayer)) {
             socket.emit('invalid-move', { message: 'Invalid target player' });
             return;
         }
@@ -1839,6 +1760,9 @@ io.on('connection', (socket) => {
         }
         
         const twistsRemaining = Math.min(3, getAvailableFlip3Draws());
+
+        // Mark target player as actively resolving Flip 3 for UI visibility
+        targetPlayer.status = 'flip3';
         
         // Set up manual twist state for target player
         gameState.flip3CompelledTwist = {

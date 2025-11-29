@@ -868,6 +868,9 @@ class Flip7Game {
         if (status === 'flip7') {
             return 'FLIP 7';
         }
+        if (status === 'flip3') {
+            return 'FLIP 3';
+        }
         return status ? status.toUpperCase() : 'WAITING';
     }
 
@@ -2089,7 +2092,8 @@ class Flip7Game {
     updateActionButtons() {
         const player = this.gameState.players[this.playerNumber];
         const isMyTurn = this.gameState.currentPlayer === this.playerNumber;
-        const canAct = isMyTurn && player && player.status === 'playing' && this.gameState.roundInProgress && !this.animatingCard && !this.awaitingSecondChance;
+        const isActiveStatus = player && (player.status === 'playing' || player.status === 'flip3');
+        const canAct = isMyTurn && player && isActiveStatus && this.gameState.roundInProgress && !this.animatingCard && !this.awaitingSecondChance;
         
         // Debug logging for button state issues with call stack trace
         const caller = new Error().stack.split('\n')[2].trim();
@@ -2607,13 +2611,13 @@ class Flip7Game {
         this.drawBtn.classList.add('hidden');
         this.stickBtn.classList.add('hidden');
         
-        // Populate the select with all playing players except the current player
+        // Populate the select with all active players except the current player
         this.freezeTargetSelect.innerHTML = '<option value="">Choose player...</option>';
         
         if (this.gameState && this.gameState.players) {
             Object.entries(this.gameState.players).forEach(([playerNumber, player]) => {
-                // Include all players that can be targeted (playing status and not the freeze card user)
-                if (player.status === 'playing' && parseInt(playerNumber) !== this.playerNumber) {
+                // Include all players that can be targeted (active status and not the freeze card user)
+                if ((player.status === 'playing' || player.status === 'flip3') && parseInt(playerNumber) !== this.playerNumber) {
                     const option = document.createElement('option');
                     option.value = playerNumber;
                     option.textContent = `Player ${playerNumber}: ${player.name}`;
@@ -2623,7 +2627,7 @@ class Flip7Game {
             
             // Also allow targeting self
             const player = this.gameState.players[this.playerNumber];
-            if (player && player.status === 'playing') {
+            if (player && (player.status === 'playing' || player.status === 'flip3')) {
                 const option = document.createElement('option');
                 option.value = this.playerNumber;
                 option.textContent = `Player ${this.playerNumber}: ${player.name} (yourself)`;
@@ -2681,13 +2685,13 @@ class Flip7Game {
         this.drawBtn.classList.add('hidden');
         this.stickBtn.classList.add('hidden');
         
-        // Populate the select with all playing players
+        // Populate the select with all active players
         this.flip3TargetSelect.innerHTML = '<option value="">Choose player...</option>';
         
         if (this.gameState && this.gameState.players) {
             Object.entries(this.gameState.players).forEach(([playerNumber, player]) => {
-                // Include all players that can be targeted (playing status)
-                if (player.status === 'playing') {
+                // Include all players that can be targeted (active status)
+                if (player.status === 'playing' || player.status === 'flip3') {
                     const option = document.createElement('option');
                     option.value = playerNumber;
                     if (parseInt(playerNumber) === this.playerNumber) {
