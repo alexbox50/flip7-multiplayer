@@ -454,7 +454,46 @@ function handleFlip3CompelledTwist(socket, playerNumber) {
             isFlip3CompelledTwist: true,
             twistsRemaining: flip3State.twistsRemaining
         });
+
+        // Check for Flip 7 (7 unique values including the newly drawn card) during Flip 3 compelled twists
+        const allCardValues = player.cards.filter(c => 
+            c.value !== 'freeze' && 
+            c.value !== 'second-chance' && 
+            c.value !== 'bonus' &&
+            c.value !== 'multiplier' &&
+            c.value !== 'flip-3' &&
+            !c.ignored
+        ).map(c => c.value);
+        const uniqueValues = new Set(allCardValues);
         
+        if (uniqueValues.size === 7) {
+            player.status = 'flip7';
+            
+            // For Flip 7: multiply only the scoring cards, then add 15 bonus
+            const baseScoringValue = calculateBaseScoringValue(playerNumber);
+            const multiplierCard = player.cards.find(card => card.value === 'multiplier' && !card.ignored);
+            const multiplier = multiplierCard ? multiplierCard.multiplier : 1;
+            const multipliedScore = baseScoringValue * multiplier;
+            const handValue = multipliedScore;
+            player.roundPoints = multipliedScore + 15;
+            
+            // Set all other active players to stuck and score them
+            Object.keys(gameState.players).forEach(otherPlayerNumber => {
+                const otherPlayer = gameState.players[otherPlayerNumber];
+                if (otherPlayer.status === 'playing' && parseInt(otherPlayerNumber) !== parseInt(playerNumber)) {
+                    otherPlayer.status = 'stuck';
+                    otherPlayer.roundPoints = calculateHandValue(parseInt(otherPlayerNumber));
+                }
+            });
+            
+            // Clear Flip 3 state and end the round immediately (no flip-seven celebration)
+            gameState.flip3CompelledTwist = null;
+            gameState.roundInProgress = false;
+            io.to('game').emit('game-state', gameState);
+            endRound();
+            return;
+        }
+
         // Check for bust (duplicate) - player can still bust during Flip 3
         const existingCardValues = player.cards.filter(c => 
             c.value !== 'freeze' && 
