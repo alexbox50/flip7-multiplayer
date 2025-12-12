@@ -507,7 +507,44 @@ function handleFlip3CompelledTwist(socket, playerNumber) {
         const isDuplicate = existingCardValues.includes(drawnCard.value);
         
         if (isDuplicate) {
-            // Player went bust during Flip 3
+            // Allow Second Chance during Flip 3 forced twists
+            const secondChanceCards = player.cards.filter(c => c.value === 'second-chance');
+            if (secondChanceCards.length > 0) {
+                // Mark the duplicate as ignored and trigger the standard Second Chance flow
+                drawnCard.ignored = true;
+                drawnCard.ignoredReason = 'second-chance-used';
+                drawnCard.ignoredTimestamp = Date.now();
+
+                gameState.secondChanceActive = true;
+                gameState.secondChancePlayer = playerNumber;
+                gameState.duplicateCard = drawnCard;
+
+                // Send normal draw event (flagged as duplicate + Flip3) then trigger second-chance animation
+                io.to('game').emit('card-drawn', {
+                    playerNumber,
+                    playerName: player.name,
+                    card: drawnCard,
+                    isFirstCard: false,
+                    isDuplicate: true,
+                    isFlip3CompelledTwist: true,
+                    twistsRemaining: flip3State.twistsRemaining
+                });
+
+                setTimeout(() => {
+                    io.to('game').emit('second-chance-activated', {
+                        playerNumber,
+                        playerName: player.name,
+                        duplicateCard: drawnCard,
+                        secondChanceCard: secondChanceCards[0],
+                        isFlip3CompelledTwist: true
+                    });
+                }, 2000);
+
+                io.to('game').emit('game-state', gameState);
+                return;
+            }
+
+            // Player went bust during Flip 3 (no Second Chance available)
             player.status = 'bust';
             player.roundPoints = 0;
             
@@ -1874,6 +1911,29 @@ io.on('connection', (socket) => {
         gameState.secondChancePlayer = null;
         gameState.duplicateCard = null;
         
+        // If we are in the middle of a Flip 3 compelled twist for this player, resume that flow
+        if (gameState.flip3CompelledTwist && gameState.flip3CompelledTwist.targetPlayerNumber === playerNumber) {
+            const flip3State = gameState.flip3CompelledTwist;
+
+            // If all twists done, continue with set-aside processing or finish Flip 3
+            if (flip3State.twistsRemaining === 0) {
+                if (flip3State.setAsideCards && flip3State.setAsideCards.length > 0) {
+                    processNextSetAsideCard(flip3State, 0);
+                } else {
+                    continueAfterFlip3(flip3State);
+                }
+            } else {
+                // Still have twists to perform; keep turn with same player
+                io.to('game').emit('flip-3-compelled-twist-update', {
+                    playerNumber: flip3State.targetPlayerNumber,
+                    playerName: player.name,
+                    twistsRemaining: flip3State.twistsRemaining
+                });
+                io.to('game').emit('game-state', gameState);
+            }
+            return;
+        }
+
         // Continue with normal turn progression
         if (checkRoundEnd()) {
             endRound();
