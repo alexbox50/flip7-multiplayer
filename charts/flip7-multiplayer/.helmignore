@@ -1,0 +1,12 @@
+# Common VCS
+.git/
+.gitignore
+
+# Node
+node_modules
+npm-debug.log
+
+# Mac / IDE
+.DS_Store
+.idea
+.vscode

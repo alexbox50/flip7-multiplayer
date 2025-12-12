@@ -1,0 +1,6 @@
+apiVersion: v2
+name: flip7-multiplayer
+description: Real-time Flip 7 multiplayer game (Node + Socket.io)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

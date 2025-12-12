@@ -1,0 +1,9 @@
+1. Get the service URL by running these commands:
+{{- if .Values.ingress.enabled }}
+  {{- range $host := (pluck "host" .Values.ingress.hosts | compact) }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host }}/
+  {{- end }}
+{{- else }}
+  export SERVICE_IP=$(kubectl get svc {{ include "flip7-multiplayer.fullname" . }} -o jsonpath='{.spec.clusterIP}')
+  echo "http://$SERVICE_IP:{{ .Values.service.port }}/"
+{{- end }}
